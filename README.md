@@ -1,0 +1,2 @@
+# ES2-2018-EIC2-03
+Neste projeto de software pretende-se desenvolver uma plataforma para resolução de problemas de otimização e apoio à decisão. A plataforma deverá permitir ao utilizador descrever, através da interface gráfica com o utilizador (Graphical User Interface - GUI), as características do problema a resolver (variáveis de decisão, funções objetivo, etc.) e a plataforma deverá apresentar uma proposta de solução ótima para esse problema.
