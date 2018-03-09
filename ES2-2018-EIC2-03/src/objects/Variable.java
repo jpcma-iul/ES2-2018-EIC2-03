@@ -1,4 +1,4 @@
-package optimization;
+package objects;
 
 public class Variable {
 	private String varName;

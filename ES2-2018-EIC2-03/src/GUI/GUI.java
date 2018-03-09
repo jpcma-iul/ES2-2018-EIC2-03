@@ -31,9 +31,9 @@ import javax.swing.JTextArea;
 import javax.swing.JTextField;
 import javax.swing.WindowConstants;
 
-import optimization.DataType;
-import optimization.Variable;
-import optimization.VariableTable;
+import objects.DataType;
+import objects.Variable;
+import objects.VariableTable;
 
 public class GUI {
 	private JFrame frame = new JFrame("Conflict-o-Minus");

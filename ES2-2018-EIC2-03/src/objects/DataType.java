@@ -1,4 +1,4 @@
-package optimization;
+package objects;
 
 public enum DataType {
 	//O utilizador deverá poder escolher o tipo das variáveis de decisão do problema, 
