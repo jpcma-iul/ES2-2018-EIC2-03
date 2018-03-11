@@ -3,9 +3,9 @@ package objects;
 public class Variable {
 	private String varName;
 	private DataType type;
-	private int lowestLimit;
-	private int highestLimit;
-	private String binaryValue = "";
+	private int lowestLimit = -50;
+	private int highestLimit = 50;
+	private String binaryValue = "0";
 	private double doublevalue = 0.0;
 	private int intvalue = 0;
 
@@ -49,6 +49,14 @@ public class Variable {
 
 	public void setValue(double value) {
 		this.doublevalue = value;
+	}
+	
+	public int getHighestLimit() {
+		return highestLimit;
+	}
+	
+	public int getLowestLimit() {
+		return lowestLimit;
 	}
 
 	public void setHighestLimit(int highestLimit) {

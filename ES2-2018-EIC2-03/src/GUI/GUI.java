@@ -145,11 +145,9 @@ public class GUI {
 			@Override
 			public void keyTyped(KeyEvent arg0) {
 			}
-
 			@Override
 			public void keyReleased(KeyEvent arg0) {
 			}
-
 			@Override
 			public void keyPressed(KeyEvent key) {
 				ValidateEmail.setBackground(Color.RED);
@@ -175,7 +173,9 @@ public class GUI {
 				ValidateProblem.setEnabled(true);
 			}
 		});
-		/* Add Listener to Email Validation Button */
+		/* 
+		 * Add Listener to Email Validation Button 
+		 */
 		ValidateEmail.addActionListener(new ActionListener() {
 			@Override
 			public void actionPerformed(ActionEvent arg0) {
@@ -201,7 +201,7 @@ public class GUI {
 							"Invalid Problem name. Should start with a letter a-z or A-Z, currency symbols or underscore"
 									+ "\n and can only be composed of letters, numbers, underscores '_' or currency symbols like '$'."
 									+ "\nStarting with a number, or any other special character is forbidden. Don't include any spaces in the Problem name.",
-							"WARNING", JOptionPane.ERROR_MESSAGE);
+									"WARNING", JOptionPane.ERROR_MESSAGE);
 					;
 				} else {
 					ValidateProblem.setBackground(Color.GREEN);
@@ -230,7 +230,7 @@ public class GUI {
 		});
 		/*
 		 * Add Listener to the variable quantity JComboBox, which will then trigger the
-		 * whole variable naming and configurating as well as add a JComboBox, a JSlider
+		 * whole variable naming and configuration as well as add a JComboBox, a JSlider
 		 * and a JLabel respectively
 		 */
 		decisionVariables.addActionListener(new ActionListener() {
@@ -294,8 +294,10 @@ public class GUI {
 					variablesName.addActionListener(new ActionListener() {
 						@Override
 						public void actionPerformed(ActionEvent action) {
+							variablesWeight.setMinimum(getCurrentVariable().getLowestLimit());
+							variablesWeight.setMaximum(getCurrentVariable().getHighestLimit());
 							variablesWeight.setValue(getCurrentVariable().getValue());
-							updateWeightValue();
+							updateWeightValue(getCurrentVariable());
 						}
 					});
 					Variables.add(variablesWeight);
@@ -306,6 +308,16 @@ public class GUI {
 			}
 		});
 		/*
+		 * Let's you set up the minimum and maximum value possible for that specific variable
+		 */
+		ChooseVariableRange.addActionListener(new ActionListener() {
+			@Override
+			public void actionPerformed(ActionEvent arg0) {
+				throwVariableWeightRangeConfigWindow(getCurrentVariable());
+			}
+		});
+
+		/*
 		 * Represent the JSlider's immediate value in a JLabel. Allow value ranges
 		 * between -99.9 and 99.9 maximum for double and between -999 and 999 for
 		 * integer and binary
@@ -313,7 +325,7 @@ public class GUI {
 		variablesWeight.addMouseListener(new MouseListener() {
 			@Override
 			public void mouseReleased(MouseEvent e) {
-				updateWeightValue();
+				updateWeightValue(getCurrentVariable());
 			}
 
 			@Override
@@ -334,36 +346,174 @@ public class GUI {
 		});
 	}
 
-	/*
-	 * Throws window with 2 JComboBoxes to define both the minimum and maximum value
-	 * that specific variable can have
+	/**
+	 * Throws a new window with 2 JComboBoxes to define both the minimum and maximum value
+	 * that specific variable can have. It gets disposes on close, which means it won't impact main frame's functioning
 	 */
 	public void throwVariableWeightRangeConfigWindow(Variable whichVariable) {
+		Font font = new Font("Cambria",Font.CENTER_BASELINE,20);
+		JFrame thrown = new JFrame("Weight Range Configuration of "+"'"+whichVariable.getVarName()+"'");
+		JPanel inFrame = new JPanel(new FlowLayout());
+		JLabel currentConfig = new JLabel("(Current Minimum = "+whichVariable.getLowestLimit()+")");
+		JLabel inPanelMinimum = new JLabel();
+		JLabel inPanelMaximum = new JLabel();
+		JTextField inputMinimum = new JTextField(4);
+		JTextField inputMaximum = new JTextField(4);
+		inputMinimum.setSize(4, 20);
+		inputMaximum.setSize(4, 20);
+		currentConfig.setFont(font);
+		inPanelMinimum.setFont(font);
+		inPanelMaximum.setFont(font);
+		inFrame.add(currentConfig);
+		inFrame.add(inPanelMinimum);
+		inFrame.add(inputMinimum);
 		DataType type = whichVariable.getType();
 		switch (type) {
 		case BINARY:
-
+			inPanelMinimum.setText("Choose a Value between -999 and 999 and press 'ENTER' to define NEW Minimum:");
+			inputMinimum.addActionListener(new ActionListener() {	
+				@Override
+				public void actionPerformed(ActionEvent arg0) {
+					if(!(isValidLimit(inputMinimum.getText(),false))) {
+						new JOptionPane().showMessageDialog(thrown, "Only a number between -999 and 999 allowed.","WARNING",JOptionPane.ERROR_MESSAGE);
+					}else {
+						inFrame.removeAll();
+						currentConfig.setText("(Current Maximum = "+whichVariable.getHighestLimit()+")");
+						inPanelMaximum.setText("Choose a Value between "+inputMinimum.getText()+" and 999 and press 'ENTER' to define NEW Maximum:");
+						inFrame.add(currentConfig);
+						inFrame.add(inPanelMaximum);
+						inFrame.add(inputMaximum);
+						thrown.pack();
+						thrown.setVisible(true);
+						inputMaximum.addActionListener(new ActionListener() {
+							@Override
+							public void actionPerformed(ActionEvent arg0) {
+								if(!(isValidLimit(inputMaximum.getText(),false))||Integer.parseInt(inputMaximum.getText())<Integer.parseInt(inputMinimum.getText())){
+									new JOptionPane().showMessageDialog(thrown, "Only a number between "+inputMinimum.getText()+" and 999 allowed.","WARNING",JOptionPane.ERROR_MESSAGE);
+								}else {
+									whichVariable.setLowestLimit(Integer.parseInt(inputMinimum.getText()));
+									whichVariable.setHighestLimit(Integer.parseInt(inputMaximum.getText()));
+									variablesWeight.setMinimum(getCurrentVariable().getLowestLimit());
+									variablesWeight.setMaximum(getCurrentVariable().getHighestLimit());
+									/*If the value is still between range then it stays the same, else it gets reset to the average value immediately*/
+									if(!(whichVariable.getValue()>=whichVariable.getLowestLimit()&&whichVariable.getValue()<=whichVariable.getHighestLimit())) {
+										int average = (int)((whichVariable.getHighestLimit()+whichVariable.getLowestLimit())/2);
+										whichVariable.setValue(Integer.toBinaryString(average));
+										if(getCurrentVariable().equals(whichVariable)) variablesWeight.setValue(whichVariable.getValue());
+									}
+									new JOptionPane().showMessageDialog(thrown, "SUCCESSFULLY UPDATED VARIABLE'S RANGE!");
+									thrown.dispose();
+								}
+							}
+						});
+					}
+				}
+			});
 			break;
 		case INTEGER:
-
+			inPanelMinimum.setText("Choose a Value between -999 and 999 and press 'ENTER' to define NEW Minimum:");
+			inputMinimum.addActionListener(new ActionListener() {	
+				@Override
+				public void actionPerformed(ActionEvent arg0) {
+					if(!(isValidLimit(inputMinimum.getText(),false))) {
+						new JOptionPane().showMessageDialog(thrown, "Only a number between -999 and 999 allowed.","WARNING",JOptionPane.ERROR_MESSAGE);
+					}else {
+						inFrame.removeAll();
+						currentConfig.setText("(Current Maximum = "+whichVariable.getHighestLimit()+")");
+						inPanelMaximum.setText("Choose a Value between "+inputMinimum.getText()+" and 999 and press 'ENTER' to define NEW Maximum:");
+						inFrame.add(currentConfig);
+						inFrame.add(inPanelMaximum);
+						inFrame.add(inputMaximum);
+						thrown.pack();
+						thrown.setVisible(true);
+						inputMaximum.addActionListener(new ActionListener() {
+							@Override
+							public void actionPerformed(ActionEvent arg0) {
+								if(!(isValidLimit(inputMaximum.getText(),false))||Integer.parseInt(inputMaximum.getText())<Integer.parseInt(inputMinimum.getText())){
+									new JOptionPane().showMessageDialog(thrown, "Only a number between "+inputMinimum.getText()+" and 999 allowed.","WARNING",JOptionPane.ERROR_MESSAGE);
+								}else {
+									whichVariable.setLowestLimit(Integer.parseInt(inputMinimum.getText()));
+									whichVariable.setHighestLimit(Integer.parseInt(inputMaximum.getText()));
+									variablesWeight.setMinimum(getCurrentVariable().getLowestLimit());
+									variablesWeight.setMaximum(getCurrentVariable().getHighestLimit());
+									/*If the value is still between range then it stays the same, else it gets reset to the average value immediately*/
+									if(!(whichVariable.getValue()>=whichVariable.getLowestLimit()&&whichVariable.getValue()<=whichVariable.getHighestLimit())) {
+										int average = (int)((whichVariable.getHighestLimit()+whichVariable.getLowestLimit())/2);
+										whichVariable.setValue(average);
+										if(getCurrentVariable().equals(whichVariable)) variablesWeight.setValue(whichVariable.getValue());
+									}
+									new JOptionPane().showMessageDialog(thrown, "SUCCESSFULLY UPDATED VARIABLE'S RANGE!");
+									thrown.dispose();
+								}
+							}
+						});
+					}
+				}
+			});
 			break;
-
 		case REAL:
-
+			currentConfig.setText("(Current Minimum = "+whichVariable.getLowestLimit()/10+")");
+			inPanelMinimum.setText("Choose a Value between -99.9 and 99.9 and press 'ENTER' to define NEW Minimum:");
+			inputMinimum.addActionListener(new ActionListener() {	
+				@Override
+				public void actionPerformed(ActionEvent arg0) {
+					if(!(isValidLimit(inputMinimum.getText(),true))) {
+						new JOptionPane().showMessageDialog(thrown, "Only a number between -99.9 and 99.9 allowed.","WARNING",JOptionPane.ERROR_MESSAGE);
+					}else {
+						inFrame.removeAll();
+						currentConfig.setText("(Current Maximum = "+whichVariable.getHighestLimit()/10+")");
+						inPanelMaximum.setText("Choose a Value between "+inputMinimum.getText()+" and 99.9 and press 'ENTER' to define NEW Maximum:");
+						inFrame.add(currentConfig);
+						inFrame.add(inPanelMaximum);
+						inFrame.add(inputMaximum);
+						thrown.pack();
+						thrown.setVisible(true);
+						inputMaximum.addActionListener(new ActionListener() {
+							@Override
+							public void actionPerformed(ActionEvent arg0) {
+								if(!(isValidLimit(inputMaximum.getText(),true))||Double.parseDouble(inputMaximum.getText())<Double.parseDouble(inputMinimum.getText())){
+									new JOptionPane().showMessageDialog(thrown, "Only a number between "+inputMinimum.getText()+" and 99.9 allowed.","WARNING",JOptionPane.ERROR_MESSAGE);
+								}else {
+									whichVariable.setLowestLimit((int) (Double.parseDouble(inputMinimum.getText())*10));
+									whichVariable.setHighestLimit((int) (Double.parseDouble(inputMaximum.getText())*10));
+									variablesWeight.setMinimum(getCurrentVariable().getLowestLimit());
+									variablesWeight.setMaximum(getCurrentVariable().getHighestLimit());
+									/*If the value is still between range then it stays the same, else it gets reset to the average value immediately*/
+									if(!(whichVariable.getValue()>=whichVariable.getLowestLimit()&&whichVariable.getValue()<=whichVariable.getHighestLimit())) {
+										double average = ((whichVariable.getHighestLimit()+whichVariable.getLowestLimit())/2);
+										whichVariable.setValue(average);
+										if(getCurrentVariable().equals(whichVariable)) variablesWeight.setValue(whichVariable.getValue());
+										updateWeightValue(whichVariable);
+									}
+									new JOptionPane().showMessageDialog(thrown, "SUCCESSFULLY UPDATED VARIABLE'S RANGE!");
+									thrown.dispose();
+								}
+							}
+						});
+					}
+				}
+			});
 		}
+		thrown.add(inFrame);
+		thrown.pack();
+		thrown.setLocationRelativeTo(null);
+		thrown.setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
+		thrown.setVisible(true);
 	}
 
-	private void updateWeightValue() {
-		switch (getCurrentVariable().getType()) {
+	/**
+	 * Sets the value of the Variable to the one the user set on the JSlider "variablesWeight"
+	 */
+	private void updateWeightValue(Variable var) {
+		switch (var.getType()) {
 		case BINARY:
 			weightValue.setText(Integer.toBinaryString(variablesWeight.getValue()));
-			Integer valueBinary = Integer.parseUnsignedInt(weightValue.getText(), 2);
-			getCurrentVariable().setValue(valueBinary);
+			var.setValue(weightValue.getText());
 			break;
 		case INTEGER:
 			weightValue.setText(String.valueOf(variablesWeight.getValue()));
 			Integer valueInteger = Integer.valueOf(weightValue.getText());
-			getCurrentVariable().setValue(valueInteger);
+			var.setValue(valueInteger);
 			break;
 		case REAL:
 			/* If it's a negative number */
@@ -400,11 +550,16 @@ public class GUI {
 				}
 			}
 			Double valueDouble = Double.valueOf(weightValue.getText());
-			getCurrentVariable().setValue(valueDouble);
+			var.setValue(valueDouble);
 		}
 	}
 
-	/* Validates a generic e-mail */
+	/**
+	 * 
+	 * @param email
+	 * @return
+	 * Validates a generic e-mail address
+	 */
 	private boolean isValidEmail(String email) {
 		String emailRegex = "^[a-zA-Z0-9_+&*-]+(?:\\." + "[a-zA-Z0-9_+&*-]+)*@" + "(?:[a-zA-Z0-9-]+\\.)+[a-z"
 				+ "A-Z]{2,7}$";
@@ -415,7 +570,12 @@ public class GUI {
 		return pat.matcher(email).matches();
 	}
 
-	/* Validates a Problem naming with JAVA Class restrictions */
+	/**
+	 * 
+	 * @param problem
+	 * @return
+	 * Validates a Problem naming with JAVA Class restrictions 
+	 */
 	private boolean isValidProblem(String problem) {
 		String problemRegex = "^[a-zA-Z\\p{Sc}_]+([a-zA-Z0-9\\p{Sc}_]*)$";
 		Pattern pat = Pattern.compile(problemRegex);
@@ -425,6 +585,12 @@ public class GUI {
 
 	}
 
+	/**
+	 * 
+	 * @param variable
+	 * @return
+	 * Validates if the variable name is composed by a-zA-Z0-9 characters only
+	 */
 	private boolean isValidVariableName(String variable) {
 		String problemRegex = "^[\\w]+$";
 		Pattern pat = Pattern.compile(problemRegex);
@@ -433,7 +599,12 @@ public class GUI {
 		return pat.matcher(variable).matches();
 	}
 
-	/* Tests out if a given variable name is REPEATED or UNIQUE */
+	/**
+	 * 
+	 * @param nameToTest
+	 * @return
+	 * Tests out if a given variable name is REPEATED or UNIQUE 
+	 */
 	private boolean isRepeatedVariableName(String nameToTest) {
 		int count = 0;
 		for (Variable v : variableTable.getVariables()) {
@@ -443,6 +614,21 @@ public class GUI {
 		if (count == 0)
 			return false;
 		return true;
+	}
+
+	/**
+	 * 
+	 * @param input
+	 * @return
+	 * Validates the input of MinimumRange and MaximumRange a Weight(Variable Value) can have (-999 to 999 or -99.9 to 99.9 in case of Real)
+	 */
+	private boolean isValidLimit(String input, boolean isRealInput) {
+		String problemRegex = "^-?[0-9]{1,3}$";
+		if(isRealInput) problemRegex = "^-?[0-9]{1,2}\\.\\d?$";
+		Pattern pat = Pattern.compile(problemRegex);
+		if (input == null)
+			return false;
+		return pat.matcher(input).matches();
 	}
 
 	public static void main(String[] args) {
