@@ -3,10 +3,12 @@ package objects;
 public class Variable {
 	private String varName;
 	private DataType type;
-	private int lowestLimit = -50;
-	private int highestLimit = 50;
+	private double highestRealLimit = Double.MAX_VALUE;
+	private double lowestRealLimit = Double.MIN_VALUE;
+	private int lowestLimit = Integer.MIN_VALUE;
+	private int highestLimit = 	Integer.MAX_VALUE;
 	private String binaryValue = "0";
-	private double doublevalue = 0.0;
+	private double realvalue = 0.0;
 	private int intvalue = 0;
 
 	public Variable(String varName, DataType type) {
@@ -30,13 +32,15 @@ public class Variable {
 	 * the latter are considered for the calculation.
 	 * 
 	 */
-	public int getValue() {
+	public int getIntegerValue() {
 		if (type == DataType.BINARY) {
 			return (int) Long.parseLong(binaryValue, 2);
 		}
-		if (type == DataType.REAL)
-			return (int) (doublevalue * 10);
 		return intvalue;
+	}
+	
+	public double getRealValue() {
+		return realvalue;
 	}
 
 	public void setValue(String binaryValue) {
@@ -48,7 +52,7 @@ public class Variable {
 	}
 
 	public void setValue(double value) {
-		this.doublevalue = value;
+		this.realvalue = value;
 	}
 	
 	public int getHighestLimit() {
