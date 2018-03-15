@@ -18,5 +18,13 @@ public class VariableTable {
 		return Variables;
 	}
 	
+	public void clear() {
+		while(!Variables.isEmpty())
+			Variables.remove(0);
+	}
+	
+	public void setVariableGroupName(String variableGroupName) {
+		VariableGroupName = variableGroupName;
+	}
 	
 }
