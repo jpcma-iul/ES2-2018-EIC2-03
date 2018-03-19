@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<XML>
+        	
+	
+    
+    <Administrator Name="Joao Mendonca" email="jpcma@iscte-iul.pt"/>
+        	
+    
+    <Paths>
+                		
+        
+        <jMetalPath>/users/abc/def</jMetalPath>
+                		
+        
+        <jarsPath>/users/xyz/kyw</jarsPath>
+                	
+    
+    </Paths>
+        	
+    
+    <Variables>
+                		
+        
+        <Variable DataType="" HigherLimit="" LowerLimit="" Name="" Value=""/>
+                	
+    
+    </Variables>
+        
+    
+    <Administrator Name="Joaquim" email="joaquim@iscte-iul.pt"/>
+        
+    <NewData>More new data</NewData>
+    
+    <Administrator Name="Joaquim" email="joaquim@iscte-iul.pt"/>
+    <NewData>More new data</NewData>
+</XML>

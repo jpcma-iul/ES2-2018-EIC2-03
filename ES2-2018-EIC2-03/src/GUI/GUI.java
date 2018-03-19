@@ -40,6 +40,7 @@ import javax.swing.JTextArea;
 import javax.swing.JTextField;
 import javax.swing.SwingConstants;
 import javax.swing.WindowConstants;
+import javax.swing.filechooser.FileNameExtensionFilter;
 import javax.swing.table.DefaultTableModel;
 import javax.swing.table.TableCellEditor;
 import javax.swing.table.TableColumn;
@@ -281,304 +282,311 @@ public class GUI {
 		loadConfig.addActionListener(new ActionListener() {
 			@Override
 			public void actionPerformed(ActionEvent arg0) {
-				JFileChooser definePath = new JFileChooser();
-				definePath.showOpenDialog(null);
+				JFileChooser definePath = new JFileChooser(new File("../Saved Configuration/"));
+				FileNameExtensionFilter xmlfilter = new FileNameExtensionFilter("xml files (*.xml)", "xml");
+				/*Without this you'd have to click the left icon of a file to select it, clicking on it's text would edit it.*/
+				definePath.setFileSelectionMode(JFileChooser.FILES_AND_DIRECTORIES);
+				definePath.setFileFilter(xmlfilter);
+				int result = definePath.showOpenDialog(null);
 				String pathname;
-				try {
-					pathname = definePath.getSelectedFile().getCanonicalPath();
-					throwVariableTableConfigWindow(pathname);
-				} catch (IOException e) {
+				if(result==JFileChooser.CANCEL_OPTION) JOptionPane.showMessageDialog(null, "Operation Canceled!");
+				else {
+					try {
+						pathname = definePath.getSelectedFile().getCanonicalPath();
+						System.out.println(pathname);
+						throwVariableTableConfigWindow(pathname);
+					} catch (IOException e) {
+					}
 				}
-				
-			}
+			};
 		});
 
 
-	}
+		}
 
-	/**
-	 * A JTable containing all the database of the variables and their relevant information.
-	 * Also allows users to save the data on memory and access it again and again, without
-	 * needing to export it into XML immediately, meaning that if the user changes his mind
-	 * all he has to do is not save as XML.
-	 * In case the user loaded from an XML, not to worry as well, even if he changes the values
-	 * withing our application it won't affect the original file unless the user chooses so.
-	 * @param pathToXML - The path leading to the XML. If null will use the application's internal memory to keep temporary data.
-	 */
-	public void throwVariableTableConfigWindow(String pathToXML) {
-		JPanel insideFrame = new JPanel();
-		JPanel forEditSaveButtons = new JPanel(new GridLayout(12,1));
-		JButton editButton = new JButton("Edit Variable Group Name");
-		JButton saveButton = new JButton("Save");
-		JButton addRow = new JButton("Add Variable");
-		JButton removeRow = new JButton("Remove Selected Variable(s)");
-
-		editButton.setFont(VariableFont);
-		saveButton.setFont(VariableFont);
-		addRow.setFont(VariableFont);
-		removeRow.setFont(VariableFont);
-
-		forEditSaveButtons.add(editButton);
-		forEditSaveButtons.add(saveButton);
-		forEditSaveButtons.add(addRow);
-		forEditSaveButtons.add(removeRow);
-		/*
-		 * Defining all the listeners for the SWING Components of the Configuration Window
+		/**
+		 * A JTable containing all the database of the variables and their relevant information.
+		 * Also allows users to save the data on memory and access it again and again, without
+		 * needing to export it into XML immediately, meaning that if the user changes his mind
+		 * all he has to do is not save as XML.
+		 * In case the user loaded from an XML, not to worry as well, even if he changes the values
+		 * withing our application it won't affect the original file unless the user chooses so.
+		 * @param pathToXML - The path leading to the XML. If null will use the application's internal memory to keep temporary data.
 		 */
-		addRow.addActionListener(new ActionListener() {		
-			@Override
-			public void actionPerformed(ActionEvent arg0) {
-				String[] options= {"Binary","Integer","Real"};
-				JComboBox choice = new JComboBox(options);
-				JOptionPane.showMessageDialog(null, choice, "Choose Data Type for this Variable", JOptionPane.QUESTION_MESSAGE);
-				Object[] newRow = {"",choice.getSelectedItem(),"","",""};
-				tableModel.addRow(newRow);
-			}
-		});
-		removeRow.addActionListener(new ActionListener() {
-			@Override
-			public void actionPerformed(ActionEvent arg0) {
-				while(configurationTable.getSelectedRows().length!=0) {
-					tableModel.removeRow(configurationTable.getSelectedRows()[0]);
+		public void throwVariableTableConfigWindow(String pathToXML) {
+			JPanel insideFrame = new JPanel();
+			JPanel forEditSaveButtons = new JPanel(new GridLayout(12,1));
+			JButton editButton = new JButton("Edit Variable Group Name");
+			JButton saveButton = new JButton("Save");
+			JButton addRow = new JButton("Add Variable");
+			JButton removeRow = new JButton("Remove Selected Variable(s)");
+
+			editButton.setFont(VariableFont);
+			saveButton.setFont(VariableFont);
+			addRow.setFont(VariableFont);
+			removeRow.setFont(VariableFont);
+
+			forEditSaveButtons.add(editButton);
+			forEditSaveButtons.add(saveButton);
+			forEditSaveButtons.add(addRow);
+			forEditSaveButtons.add(removeRow);
+			/*
+			 * Defining all the listeners for the SWING Components of the Configuration Window
+			 */
+			addRow.addActionListener(new ActionListener() {		
+				@Override
+				public void actionPerformed(ActionEvent arg0) {
+					String[] options= {"Binary","Integer","Real"};
+					JComboBox choice = new JComboBox(options);
+					JOptionPane.showMessageDialog(null, choice, "Choose Data Type for this Variable", JOptionPane.QUESTION_MESSAGE);
+					Object[] newRow = {"",choice.getSelectedItem(),"","",""};
+					tableModel.addRow(newRow);
 				}
-			}
-		});
-		editButton.addActionListener(new ActionListener() {
-			@Override
-			public void actionPerformed(ActionEvent arg0) {
-				String input = JOptionPane.showInputDialog("Select a new Name for this Variable Group Name. Can't be \"New Variable Group Configuration\"");
-				if(input != null && !input.equals("") && !input.equals("New Variable Group Name")) {
-					varsetup.setTitle(input);
-					if(variableTable==null)variableTable = new VariableTable(input);
-					else variableTable.setVariableGroupName(input);
-				}else JOptionPane.showMessageDialog(null, "Operation Canceled!","",JOptionPane.WARNING_MESSAGE);
-			}
-		});
-		saveButton.addActionListener(new ActionListener() {
-			@Override
-			public void actionPerformed(ActionEvent arg0) {
-				if(varsetup.getTitle().equals("New Variable Group Configuration")) {
-					String input = JOptionPane.showInputDialog("Choose a name for this Group of Variables\nExample: Spam Filter Configuration\nLeaving this field blank cancels the operation.");
-					if(input == null || input.equals("")) {
-						JOptionPane.showMessageDialog(null, "Operation Canceled!", "", JOptionPane.WARNING_MESSAGE);
-						return;
-					}else {
+			});
+			removeRow.addActionListener(new ActionListener() {
+				@Override
+				public void actionPerformed(ActionEvent arg0) {
+					while(configurationTable.getSelectedRows().length!=0) {
+						tableModel.removeRow(configurationTable.getSelectedRows()[0]);
+					}
+				}
+			});
+			editButton.addActionListener(new ActionListener() {
+				@Override
+				public void actionPerformed(ActionEvent arg0) {
+					String input = JOptionPane.showInputDialog("Select a new Name for this Variable Group Name. Can't be \"New Variable Group Configuration\"");
+					if(input != null && !input.equals("") && !input.equals("New Variable Group Name")) {
 						varsetup.setTitle(input);
-						variableTable = new VariableTable(input);
-					}
+						if(variableTable==null)variableTable = new VariableTable(input);
+						else variableTable.setVariableGroupName(input);
+					}else JOptionPane.showMessageDialog(null, "Operation Canceled!","",JOptionPane.WARNING_MESSAGE);
 				}
-				variableTable.getVariables().clear();
-				for(int i=0;i<configurationTable.getRowCount();i++) {
-					Variable toAdd;
-					if(configurationTable.getValueAt(i, 1).equals("Binary")) {
-						toAdd=new Variable((String)(configurationTable.getValueAt(i, 0)), DataType.BINARY);
-						if(!isValidValue(String.valueOf(configurationTable.getValueAt(i, 2)),DataType.BINARY)) {
-							JOptionPane.showMessageDialog(null,"Invalid Value on the Variable '"+configurationTable.getValueAt(i, 0)+"', please change to Binary.");
+			});
+			saveButton.addActionListener(new ActionListener() {
+				@Override
+				public void actionPerformed(ActionEvent arg0) {
+					if(varsetup.getTitle().equals("New Variable Group Configuration")) {
+						String input = JOptionPane.showInputDialog("Choose a name for this Group of Variables\nExample: Spam Filter Configuration\nLeaving this field blank cancels the operation.");
+						if(input == null || input.equals("")) {
+							JOptionPane.showMessageDialog(null, "Operation Canceled!", "", JOptionPane.WARNING_MESSAGE);
 							return;
+						}else {
+							varsetup.setTitle(input);
+							variableTable = new VariableTable(input);
 						}
-						toAdd.setValue(String.valueOf(configurationTable.getValueAt(i, 2)));
-						if(isValidValue(String.valueOf(configurationTable.getValueAt(i, 3)), DataType.BINARY)) {
-							toAdd.setLowestLimit((Integer.valueOf(String.valueOf(configurationTable.getValueAt(i, 3)))));
-						}
-						if(isValidValue(String.valueOf(configurationTable.getValueAt(i, 4)), DataType.BINARY)) {
-							toAdd.setHighestLimit((Integer.valueOf(String.valueOf(configurationTable.getValueAt(i, 4)))));
-						}
-						variableTable.addVariable(toAdd);
 					}
-					if(configurationTable.getValueAt(i, 1).equals("Integer")) {
-						toAdd=new Variable((String)(configurationTable.getValueAt(i, 0)), DataType.INTEGER);
-						if(!isValidValue(String.valueOf(configurationTable.getValueAt(i, 2)),DataType.INTEGER)) {
-							JOptionPane.showMessageDialog(null,"Invalid Value on the Variable '"+configurationTable.getValueAt(i, 0)+"', please change to Integer.");
-							return;
+					variableTable.getVariables().clear();
+					for(int i=0;i<configurationTable.getRowCount();i++) {
+						Variable toAdd;
+						if(configurationTable.getValueAt(i, 1).equals("Binary")) {
+							toAdd=new Variable((String)(configurationTable.getValueAt(i, 0)), DataType.BINARY);
+							if(!isValidValue(String.valueOf(configurationTable.getValueAt(i, 2)),DataType.BINARY)) {
+								JOptionPane.showMessageDialog(null,"Invalid Value on the Variable '"+configurationTable.getValueAt(i, 0)+"', please change to Binary.");
+								return;
+							}
+							toAdd.setValue(String.valueOf(configurationTable.getValueAt(i, 2)));
+							if(isValidValue(String.valueOf(configurationTable.getValueAt(i, 3)), DataType.BINARY)) {
+								toAdd.setLowestLimit((Integer.valueOf(String.valueOf(configurationTable.getValueAt(i, 3)))));
+							}
+							if(isValidValue(String.valueOf(configurationTable.getValueAt(i, 4)), DataType.BINARY)) {
+								toAdd.setHighestLimit((Integer.valueOf(String.valueOf(configurationTable.getValueAt(i, 4)))));
+							}
+							variableTable.addVariable(toAdd);
 						}
-						toAdd.setValue(Integer.valueOf(String.valueOf((configurationTable.getValueAt(i, 2)))));
-						if(isValidValue(String.valueOf(configurationTable.getValueAt(i, 3)), DataType.INTEGER)) {
-							toAdd.setLowestLimit(Integer.valueOf(String.valueOf(configurationTable.getValueAt(i, 3))));
+						if(configurationTable.getValueAt(i, 1).equals("Integer")) {
+							toAdd=new Variable((String)(configurationTable.getValueAt(i, 0)), DataType.INTEGER);
+							if(!isValidValue(String.valueOf(configurationTable.getValueAt(i, 2)),DataType.INTEGER)) {
+								JOptionPane.showMessageDialog(null,"Invalid Value on the Variable '"+configurationTable.getValueAt(i, 0)+"', please change to Integer.");
+								return;
+							}
+							toAdd.setValue(Integer.valueOf(String.valueOf((configurationTable.getValueAt(i, 2)))));
+							if(isValidValue(String.valueOf(configurationTable.getValueAt(i, 3)), DataType.INTEGER)) {
+								toAdd.setLowestLimit(Integer.valueOf(String.valueOf(configurationTable.getValueAt(i, 3))));
+							}
+							if(isValidValue(String.valueOf(configurationTable.getValueAt(i, 4)), DataType.INTEGER)) {
+								toAdd.setHighestLimit(Integer.valueOf(String.valueOf(configurationTable.getValueAt(i, 4))));
+							}
+							variableTable.addVariable(toAdd);
 						}
-						if(isValidValue(String.valueOf(configurationTable.getValueAt(i, 4)), DataType.INTEGER)) {
-							toAdd.setHighestLimit(Integer.valueOf(String.valueOf(configurationTable.getValueAt(i, 4))));
+						if(configurationTable.getValueAt(i, 1).equals("Real")) {
+							toAdd=new Variable((String)(configurationTable.getValueAt(i, 0)), DataType.REAL);
+							if(!isValidValue(String.valueOf(configurationTable.getValueAt(i, 2)),DataType.REAL)) {
+								JOptionPane.showMessageDialog(null,"Invalid Value on the Variable '"+configurationTable.getValueAt(i, 0)+"', please change to Real.");
+								return;
+							}
+							toAdd.setValue(Double.valueOf(String.valueOf((configurationTable.getValueAt(i, 2)))));
+							if(isValidValue(String.valueOf(configurationTable.getValueAt(i, 3)), DataType.REAL)) {
+								toAdd.setLowestRealLimit(Double.valueOf(String.valueOf(configurationTable.getValueAt(i, 3))));
+							}
+							if(isValidValue(String.valueOf(configurationTable.getValueAt(i, 4)), DataType.REAL)) {
+								toAdd.setHighestRealLimit(Double.valueOf(String.valueOf(configurationTable.getValueAt(i, 4))));
+							}
+							variableTable.addVariable(toAdd);
 						}
-						variableTable.addVariable(toAdd);
 					}
-					if(configurationTable.getValueAt(i, 1).equals("Real")) {
-						toAdd=new Variable((String)(configurationTable.getValueAt(i, 0)), DataType.REAL);
-						if(!isValidValue(String.valueOf(configurationTable.getValueAt(i, 2)),DataType.REAL)) {
-							JOptionPane.showMessageDialog(null,"Invalid Value on the Variable '"+configurationTable.getValueAt(i, 0)+"', please change to Real.");
-							return;
-						}
-						toAdd.setValue(Double.valueOf(String.valueOf((configurationTable.getValueAt(i, 2)))));
-						if(isValidValue(String.valueOf(configurationTable.getValueAt(i, 3)), DataType.REAL)) {
-							toAdd.setLowestRealLimit(Double.valueOf(String.valueOf(configurationTable.getValueAt(i, 3))));
-						}
-						if(isValidValue(String.valueOf(configurationTable.getValueAt(i, 4)), DataType.REAL)) {
-							toAdd.setHighestRealLimit(Double.valueOf(String.valueOf(configurationTable.getValueAt(i, 4))));
-						}
-						variableTable.addVariable(toAdd);
-					}
+					SETUP_IN_MEMORY = true;
 				}
-				SETUP_IN_MEMORY = true;
+			});
+			/*
+			 * Here is where it is validated if either we are creating a new Config,
+			 * if we are loading a config from a XML or just loading from memory.
+			 */
+			while(tableModel.getRowCount()>0) tableModel.removeRow(0);
+			if(pathToXML==null && !SETUP_IN_MEMORY) {
+				varsetup = new JFrame("New Variable Group Configuration");
+				String[] ColumnIdentifiers = {"Name", "Data Type", "Value", "Lowest Limit", "Highest Limit"};
+				tableModel.setColumnIdentifiers(ColumnIdentifiers);
+			}else if(pathToXML==null && SETUP_IN_MEMORY){
+				varsetup = new JFrame(varsetup.getTitle());
+				for(Variable variable:variableTable.getVariables()) {
+					tableModel.addRow(fromVariableTableIntoJTable(variable));
+				}
+			}else {
+				varsetup = new JFrame(varsetup.getTitle());
+				fromXMLIntoJTable(pathToXML);
+
 			}
-		});
-		/*
-		 * Here is where it is validated if either we are creating a new Config,
-		 * if we are loading a config from a XML or just loading from memory.
+			/*
+			 * Now that we know which kind of situation we're in we prepare to show our
+			 * Configuration Table
+			 */
+			configurationTable = new JTable(tableModel) {
+				@Override
+				public boolean isCellEditable(int row,int column){  
+					if(column==1) return false;  
+					return true;
+				}
+			};
+			configurationTable.setBackground(Color.pink);
+			configurationTable.setFont(new Font("Cambria",Font.TRUETYPE_FONT,15));
+			configurationTable.getTableHeader().setResizingAllowed(false);
+			configurationTable.getTableHeader().setReorderingAllowed(false);
+			JScrollPane scroller = new JScrollPane(configurationTable);
+			scroller.setPreferredSize(new Dimension(1000,400));
+			insideFrame.add(scroller);
+			insideFrame.add(forEditSaveButtons);
+			varsetup.add(insideFrame);
+			varsetup.setResizable(false);
+			varsetup.setDefaultCloseOperation(varsetup.DISPOSE_ON_CLOSE);
+			varsetup.pack();
+			varsetup.setLocationRelativeTo(frame);
+			varsetup.setLocation(varsetup.getX(), varsetup.getY()+frame.getHeight());
+			varsetup.setVisible(true);
+		}
+
+		private Object[] fromVariableTableIntoJTable(Variable v) {
+			switch(v.getType()) {
+			case REAL: 
+				Object[] newReal = {v.getVarName(),"Real",v.getRealValue(),v.getLowestRealLimit(),v.getHighestRealLimit()};
+				return newReal;
+			case INTEGER:
+				Object[] newInteger = {v.getVarName(),"Integer",v.getIntegerValue(),v.getLowestLimit(),v.getHighestLimit()};
+				return newInteger;
+			case BINARY:
+				Object[] newBinary = {v.getVarName(),"Binary", v.getBinaryValue(),v.getLowestLimit(),v.getHighestLimit()};
+				return newBinary;
+			}
+			return null;
+		}
+
+		/**
+		 * Create the JTable based on a XML file from the path provided.
+		 * @param pathname - The path that leads to the XML File
 		 */
-		while(tableModel.getRowCount()>0) tableModel.removeRow(0);
-		if(pathToXML==null && !SETUP_IN_MEMORY) {
-			varsetup = new JFrame("New Variable Group Configuration");
-			String[] ColumnIdentifiers = {"Name", "Data Type", "Value", "Lowest Limit", "Highest Limit"};
-			tableModel.setColumnIdentifiers(ColumnIdentifiers);
-		}else if(pathToXML==null && SETUP_IN_MEMORY){
-			varsetup = new JFrame(varsetup.getTitle());
-			for(Variable variable:variableTable.getVariables()) {
-				tableModel.addRow(fromVariableTableIntoJTable(variable));
-			}
-		}else {
-			varsetup = new JFrame(varsetup.getTitle());
-			fromXMLIntoJTable(pathToXML);
-			
+		private void fromXMLIntoJTable(String pathname) {
+			validateAllVariables();
+			//Weekend work
 		}
-		/*
-		 * Now that we know which kind of situation we're in we prepare to show our
-		 * Configuration Table
+
+		/**
+		 * Validates every single variable, making sure of 4 conditions:
+		 * 1 - Name is Valid and not repeated. Is according to Java class name convention
+		 * 2 - Value respects the DataType and exists between the Lowest Limit and Highest Limit of that Variable
+		 * 3 - The Lowest Limit respects the DataType and is below the Highest Limit
+		 * 4 - The Highest Limit respects the DataType and is above the Highest Limit
 		 */
-		configurationTable = new JTable(tableModel) {
-			@Override
-			public boolean isCellEditable(int row,int column){  
-				if(column==1) return false;  
-				return true;
+		private void validateAllVariables() {
+			//Weekend work
+		}
+
+		/**
+		 * @param email
+		 * @return
+		 * Validates a generic e-mail address
+		 */
+		private boolean isValidEmail(String email) {
+			String emailRegex = "^[a-zA-Z0-9_+&*-]+(?:\\." + "[a-zA-Z0-9_+&*-]+)*@" + "(?:[a-zA-Z0-9-]+\\.)+[a-z" + "A-Z]{2,7}$";
+			Pattern pat = Pattern.compile(emailRegex);
+			if (email == null)
+				return false;
+			return pat.matcher(email).matches();
+		}
+
+		/**
+		 * @param problem The problem name we need to validate.
+		 * @return returns a boolean validating(true) or not(false) the problem provided
+		 */
+		private boolean isValidProblem(String problem) {
+			String problemRegex = "^[A-Z]+[a-zA-Z0-9]*$";
+			Pattern pat = Pattern.compile(problemRegex);
+			if (problem == null)
+				return false;
+			return pat.matcher(problem).matches();
+
+		}
+
+		/**
+		 * @param variable
+		 * @return
+		 * Validates if the variable name is composed by a-zA-Z0-9 characters only
+		 */
+		private boolean isValidVariableName(String variable) {
+			String problemRegex = "^[\\w]+$";
+			Pattern pat = Pattern.compile(problemRegex);
+			if (variable == null)
+				return false;
+			return pat.matcher(variable).matches();
+		}
+
+		/**
+		 * @param nameToTest
+		 * @return
+		 * Tests out if a given variable name is REPEATED or UNIQUE 
+		 */
+		private boolean isRepeatedVariableName(String nameToTest) {
+			int count = 0;
+			for (Variable v : variableTable.getVariables()) {
+				if (v.getVarName().equals(nameToTest))
+					count++;
 			}
-		};
-		configurationTable.setBackground(Color.pink);
-		configurationTable.setFont(new Font("Cambria",Font.TRUETYPE_FONT,15));
-		configurationTable.getTableHeader().setResizingAllowed(false);
-		configurationTable.getTableHeader().setReorderingAllowed(false);
-		JScrollPane scroller = new JScrollPane(configurationTable);
-		scroller.setPreferredSize(new Dimension(1000,400));
-		insideFrame.add(scroller);
-		insideFrame.add(forEditSaveButtons);
-		varsetup.add(insideFrame);
-		varsetup.setResizable(false);
-		varsetup.setDefaultCloseOperation(varsetup.DISPOSE_ON_CLOSE);
-		varsetup.pack();
-		varsetup.setLocationRelativeTo(frame);
-		varsetup.setLocation(varsetup.getX(), varsetup.getY()+frame.getHeight());
-		varsetup.setVisible(true);
-	}
-
-	private Object[] fromVariableTableIntoJTable(Variable v) {
-		switch(v.getType()) {
-		case REAL: 
-			Object[] newReal = {v.getVarName(),"Real",v.getRealValue(),v.getLowestRealLimit(),v.getHighestRealLimit()};
-			return newReal;
-		case INTEGER:
-			Object[] newInteger = {v.getVarName(),"Integer",v.getIntegerValue(),v.getLowestLimit(),v.getHighestLimit()};
-			return newInteger;
-		case BINARY:
-			Object[] newBinary = {v.getVarName(),"Binary", v.getBinaryValue(),v.getLowestLimit(),v.getHighestLimit()};
-			return newBinary;
+			if (count == 0)
+				return false;
+			return true;
 		}
-		return null;
-	}
-	
-	/**
-	 * Create the JTable based on a XML file from the path provided.
-	 * @param pathname - The path that leads to the XML File
-	 */
-	private void fromXMLIntoJTable(String pathname) {
-		validateAllVariables();
-		//Weekend work
-	}
-	
-	/**
-	 * Validates every single variable, making sure of 4 conditions:
-	 * 1 - Name is Valid and not repeated. Is according to Java class name convention
-	 * 2 - Value respects the DataType and exists between the Lowest Limit and Highest Limit of that Variable
-	 * 3 - The Lowest Limit respects the DataType and is below the Highest Limit
-	 * 4 - The Highest Limit respects the DataType and is above the Highest Limit
-	 */
-	private void validateAllVariables() {
-		//Weekend work
-	}
 
-	/**
-	 * @param email
-	 * @return
-	 * Validates a generic e-mail address
-	 */
-	private boolean isValidEmail(String email) {
-		String emailRegex = "^[a-zA-Z0-9_+&*-]+(?:\\." + "[a-zA-Z0-9_+&*-]+)*@" + "(?:[a-zA-Z0-9-]+\\.)+[a-z" + "A-Z]{2,7}$";
-		Pattern pat = Pattern.compile(emailRegex);
-		if (email == null)
-			return false;
-		return pat.matcher(email).matches();
-	}
-
-	/**
-	 * @param problem The problem name we need to validate.
-	 * @return returns a boolean validating(true) or not(false) the problem provided
-	 */
-	private boolean isValidProblem(String problem) {
-		String problemRegex = "^[a-zA-Z\\p{Sc}_]+([a-zA-Z0-9\\p{Sc}_]*)$";
-		Pattern pat = Pattern.compile(problemRegex);
-		if (problem == null)
-			return false;
-		return pat.matcher(problem).matches();
-
-	}
-
-	/**
-	 * @param variable
-	 * @return
-	 * Validates if the variable name is composed by a-zA-Z0-9 characters only
-	 */
-	private boolean isValidVariableName(String variable) {
-		String problemRegex = "^[\\w]+$";
-		Pattern pat = Pattern.compile(problemRegex);
-		if (variable == null)
-			return false;
-		return pat.matcher(variable).matches();
-	}
-
-	/**
-	 * @param nameToTest
-	 * @return
-	 * Tests out if a given variable name is REPEATED or UNIQUE 
-	 */
-	private boolean isRepeatedVariableName(String nameToTest) {
-		int count = 0;
-		for (Variable v : variableTable.getVariables()) {
-			if (v.getVarName().equals(nameToTest))
-				count++;
-		}
-		if (count == 0)
-			return false;
-		return true;
-	}
-
-	/**
-	 * @param input
-	 * @return
-	 * Validates the input of MinimumRange and MaximumRange a Weight(Variable Value) 
-	 * can have (-999 to 999 or -99.9 to 99.9 in case of Real)
-	 */
-	private boolean isValidValue(String input, DataType datatype) {
-		String problemRegex ="";
-		switch(datatype) {
-		case BINARY: problemRegex="^[0-1]+$";
+		/**
+		 * @param input
+		 * @return
+		 * Validates the input of MinimumRange and MaximumRange a Weight(Variable Value) 
+		 * can have (-999 to 999 or -99.9 to 99.9 in case of Real)
+		 */
+		private boolean isValidValue(String input, DataType datatype) {
+			String problemRegex ="";
+			switch(datatype) {
+			case BINARY: problemRegex="^[0-1]+$";
 			break;
-		case INTEGER: problemRegex = "^-?[0-9]+$";
+			case INTEGER: problemRegex = "^-?[0-9]+$";
 			break;
-		case REAL: problemRegex = "^-?[0-9]+\\.?[0-9]*$";
+			case REAL: problemRegex = "^-?[0-9]+\\.?[0-9]*$";
+			}
+			Pattern pat = Pattern.compile(problemRegex);
+			if (input == null)
+				return false;
+			return pat.matcher(input).matches();
 		}
-		Pattern pat = Pattern.compile(problemRegex);
-		if (input == null)
-			return false;
-		return pat.matcher(input).matches();
-	}
 
-	public static void main(String[] args) {
-		GUI gui = new GUI();
-		gui.start();
+		public static void main(String[] args) {
+			GUI gui = new GUI();
+			gui.start();
+		}
 	}
-}
