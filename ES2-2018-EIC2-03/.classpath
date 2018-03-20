@@ -2,5 +2,11 @@
 <classpath>
 	<classpathentry kind="con" path="org.eclipse.jdt.launching.JRE_CONTAINER/org.eclipse.jdt.internal.debug.ui.launcher.StandardVMType/JavaSE-1.8"/>
 	<classpathentry kind="src" path="src"/>
+	<classpathentry kind="lib" path="C:/javamail-1.4.7/mail.jar"/>
+	<classpathentry kind="lib" path="C:/jaf-1.1.1/activation.jar"/>
+	<classpathentry kind="lib" path="C:/Users/Mike/.m2/repository/org/uma/jmetal/jmetal-algorithm/5.5/jmetal-algorithm-5.5.jar"/>
+	<classpathentry kind="lib" path="C:/Users/Mike/.m2/repository/org/uma/jmetal/jmetal-core/5.5/jmetal-core-5.5.jar"/>
+	<classpathentry kind="lib" path="C:/Users/Mike/.m2/repository/org/uma/jmetal/jmetal-exec/5.5/jmetal-exec-5.5.jar"/>
+	<classpathentry kind="lib" path="C:/Users/Mike/.m2/repository/org/uma/jmetal/jmetal-problem/5.5/jmetal-problem-5.5.jar"/>
 	<classpathentry kind="output" path="bin"/>
 </classpath>
