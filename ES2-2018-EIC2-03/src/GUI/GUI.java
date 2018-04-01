@@ -6,11 +6,14 @@ import java.awt.Dimension;
 import java.awt.FlowLayout;
 import java.awt.Font;
 import java.awt.GridLayout;
+import java.awt.Image;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.awt.event.KeyAdapter;
 import java.awt.event.KeyEvent;
 import java.awt.event.KeyListener;
+import java.awt.event.WindowEvent;
+import java.awt.event.WindowListener;
 import java.io.File;
 import java.io.IOException;
 import java.net.UnknownHostException;
@@ -18,12 +21,16 @@ import java.util.ArrayList;
 import java.util.Properties;
 import java.util.regex.Pattern;
 
+import javax.imageio.ImageIO;
+import javax.mail.AuthenticationFailedException;
 import javax.mail.MessagingException;
 import javax.mail.Session;
 import javax.mail.Transport;
 import javax.swing.BorderFactory;
+import javax.swing.ImageIcon;
 import javax.swing.JButton;
 import javax.swing.JComboBox;
+import javax.swing.JEditorPane;
 import javax.swing.JFileChooser;
 import javax.swing.JFrame;
 import javax.swing.JLabel;
@@ -41,24 +48,25 @@ import objects.DataType;
 import objects.SendMail;
 import objects.Variable;
 import objects.VariableTable;
+import xml.XMLParser;
 
 @SuppressWarnings("all")
 public class GUI {
 	/* Containers */
 	private JFrame varsetup = new JFrame("New Variable Group Configuration");
 	private JFrame frame = new JFrame("Conflict-o-Minus");
-	private JPanel master = new JPanel(new GridLayout(5, 1));
+	private JPanel master = new JPanel(new GridLayout(6, 1));
 	private JPanel EmailProblem = new JPanel(new FlowLayout());
 	private JPanel Description = new JPanel(new FlowLayout());
 	private JPanel Deadlines = new JPanel(new FlowLayout());
 	private JPanel Variables = new JPanel(new FlowLayout());
 	private JPanel Help = new JPanel(new FlowLayout());
+	private JPanel Optimization = new JPanel(new FlowLayout());
 	/* All Conditions */
-	private boolean EMAIL_IS_VALID = false;
-	private boolean PROBLEM_IS_VALID = false;
 	private boolean CONFIGURATION_WINDOW_ALREADY_ONGOING = false;
 	private boolean SETUP_IN_MEMORY = false;
-	private boolean CHANGES_ARE_SAVED = false;
+	private boolean FAQ_WINDOW_ALREADY_ONGOING = false;
+	private boolean HELP_WINDOW_ALREADY_ONGOING = false;
 	/* Email & Problem Definition Elements */
 	private JTextField EmailField = new JTextField(26);
 	private JButton ValidateEmail = new JButton("Validate Email");
@@ -78,15 +86,18 @@ public class GUI {
 	private JButton saveConfig = new JButton("Save Setup to XML");
 	private Font VariableFont = new Font("Cambria", Font.BOLD, 20);
 	/* Help Elements */
-	private JButton FAQ = new JButton("F.A.Q.");
+	private JButton faq = new JButton("F.A.Q.");
 	private JButton help = new JButton("Ask for Help");
 	/* Memory Data */
 	private DefaultTableModel tableModel = new DefaultTableModel(0, 5);
 	private JTable configurationTable;
 	private VariableTable variableTable;
+	/* XML Parser */
+	private XMLParser XML = new XMLParser();
+	/* Optimization Buttons */
+	private JButton start = new JButton("START THE OPTIMIZATION PROCESS");
 
 	public void start() {
-
 		initializeFields();
 		initializeActionListeners();
 		frame.add(master);
@@ -138,8 +149,16 @@ public class GUI {
 				"Email us if you don't understand how this platform works or if you're having trouble using it:"));
 		Help.add(help);
 		Help.add(new JLabel("Check our F.A.Q. first:"));
-		Help.add(FAQ);
+		Help.add(faq);
 		master.add(Help);
+		/* OPTIMIZATION */
+		start.setFont(VariableFont);
+		start.setEnabled(false);
+		start.setBackground(Color.RED);
+		
+		start.setToolTipText("Won't work until both the Email and the Problem Names are validated.");
+		Optimization.add(start);
+		master.add(Optimization);
 	}
 
 	/*
@@ -151,7 +170,6 @@ public class GUI {
 		 * Allows to re-enable the Email Validator upon re-interacting with the Field
 		 */
 		EmailField.addKeyListener(new KeyAdapter() {
-
 			@Override
 			public void keyPressed(KeyEvent key) {
 				ValidateEmail.setBackground(Color.RED);
@@ -183,6 +201,10 @@ public class GUI {
 				} else {
 					ValidateEmail.setBackground(Color.GREEN);
 					ValidateEmail.setEnabled(false);
+					if(ValidateProblem.getBackground().equals(Color.GREEN)&&ValidateEmail.getBackground().equals(Color.GREEN)) {
+						start.setBackground(Color.GREEN);
+						start.setEnabled(true);
+					}
 				}
 			}
 		});
@@ -198,11 +220,15 @@ public class GUI {
 							"Invalid Problem name. Should start with a letter a-z or A-Z, currency symbols or underscore"
 									+ "\n and can only be composed of letters, numbers, underscores '_' or currency symbols like '$'."
 									+ "\nStarting with a number, or any other special character is forbidden. Don't include any spaces in the Problem name.",
-							"WARNING", JOptionPane.ERROR_MESSAGE);
+									"WARNING", JOptionPane.ERROR_MESSAGE);
 					;
 				} else {
 					ValidateProblem.setBackground(Color.GREEN);
 					ValidateProblem.setEnabled(false);
+					if(ValidateProblem.getBackground().equals(Color.GREEN)&&ValidateEmail.getBackground().equals(Color.GREEN)) {
+						start.setBackground(Color.GREEN);
+						start.setEnabled(true);
+					}
 				}
 			}
 		});
@@ -237,19 +263,23 @@ public class GUI {
 			@Override
 			public void actionPerformed(ActionEvent arg0) {
 				if (!(varsetup.isActive()) && !(SETUP_IN_MEMORY)) {
-					throwVariableTableConfigWindow(null);
+					if(!CONFIGURATION_WINDOW_ALREADY_ONGOING) throwVariableTableConfigWindow(null);
 				} else {
 					int choice = JOptionPane.showConfirmDialog(null,
 							"There's already data stored, if you don't want to lose that data then cancel the operation. Do you wish to continue?");
 					if (choice == JOptionPane.OK_OPTION) {
-						varsetup.setTitle("New Variable Group Configuration");
-						variableTable.clear();
-						throwVariableTableConfigWindow(null);
+						if(!CONFIGURATION_WINDOW_ALREADY_ONGOING) {
+							varsetup.setTitle("New Variable Group Configuration");
+							variableTable.clear();
+							throwVariableTableConfigWindow(null);
+						}
 					}
 				}
 
 			}
 		});
+
+
 		/*
 		 * Loads the Setup in current memory
 		 */
@@ -257,16 +287,18 @@ public class GUI {
 			@Override
 			public void actionPerformed(ActionEvent arg0) {
 				if (!(varsetup.isActive()) && SETUP_IN_MEMORY)
-					throwVariableTableConfigWindow(null);
+					if(!CONFIGURATION_WINDOW_ALREADY_ONGOING) throwVariableTableConfigWindow(null);
 			}
 		});
+
+
 		/*
 		 * Loads a Setup fron a XML file
 		 */
 		loadConfig.addActionListener(new ActionListener() {
 			@Override
 			public void actionPerformed(ActionEvent arg0) {
-				JFileChooser definePath = new JFileChooser(new File("../Saved Configuration/"));
+				JFileChooser definePath = new JFileChooser(new File("../Problems/"));
 				FileNameExtensionFilter xmlfilter = new FileNameExtensionFilter("xml files (*.xml)", "xml");
 				/*
 				 * Without this you'd have to click the left icon of a file to select it,
@@ -281,106 +313,37 @@ public class GUI {
 				else {
 					try {
 						pathname = definePath.getSelectedFile().getCanonicalPath();
-						System.out.println(pathname);
-						throwVariableTableConfigWindow(pathname);
+						if(!CONFIGURATION_WINDOW_ALREADY_ONGOING) throwVariableTableConfigWindow(pathname);
 					} catch (IOException e) {
 					}
 				}
 			};
 		});
+		/* Saves setup into a XML file */
+		saveConfig.addActionListener(new ActionListener() {
+			@Override
+			public void actionPerformed(ActionEvent arg0) {
+				if(!SETUP_IN_MEMORY || ValidateProblem.isEnabled()) {
+					JOptionPane.showMessageDialog(null, "The Problem Name is not validated yet OR There is no setup currently in memory");
+				}
+				else {
+					XML.saveProblem(ProblemField.getText(), variableTable);
 
+				}
+			}
+		});
+		/* Sends an e-mail to the staff to clarify any doubts with the usage of the application */
 		help.addActionListener(new ActionListener() {
-
 			@Override
 			public void actionPerformed(ActionEvent e) {
-				JPanel panel = new JPanel();
-				JLabel label = new JLabel("Enter a password:");
-				JPasswordField pass = new JPasswordField(10);
-				panel.add(label);
-				panel.add(pass);
-				String[] options = new String[] { "OK", "Cancel" };
-				int option = JOptionPane.showOptionDialog(null, panel, "Insert your e-mail account password",
-						JOptionPane.NO_OPTION, JOptionPane.PLAIN_MESSAGE, null, options, options[0]);
-				if (option == 1)
-					return;
-				while (option == 0 && trimCharArray(pass.getPassword()).length == 0) {
-					pass.setText(null);
-					option = JOptionPane.showOptionDialog(null, panel, "Insert your e-mail account password",
-							JOptionPane.NO_OPTION, JOptionPane.PLAIN_MESSAGE, null, options, options[0]);
-				}
-				char[] password = pass.getPassword();
-				if (password.length > 0) {
-					JFrame frame = new JFrame("Help - Send Email to Administrator");
-					frame.setDefaultCloseOperation(WindowConstants.DISPOSE_ON_CLOSE);
-					frame.setSize(new Dimension(450, 400));
-					frame.setLocationRelativeTo(null);
-					frame.setResizable(false);
-
-					JPanel infoPanel = new JPanel();
-
-					JTextField subjectField = new JTextField();
-					subjectField.setPreferredSize(new Dimension(250, 25));
-
-					JTextArea textArea = new JTextArea();
-					JScrollPane textPane = new JScrollPane(textArea);
-
-					JLabel subjectLabel = new JLabel("Subject :");
-
-					JButton sendButton = new JButton("Send e-mail");
-					sendButton.setFocusable(false);
-					sendButton.addActionListener(new ActionListener() {
-
-						@Override
-						public void actionPerformed(ActionEvent e) {
-							if (!isValidEmail(EmailField.getText()))
-								JOptionPane.showMessageDialog(null, "You need to validate your email first!", "WARNING",
-										JOptionPane.WARNING_MESSAGE);
-							if (subjectField.getText().trim().length() == 0)
-								JOptionPane.showMessageDialog(null, "You need to fill in the subject of the e-mail!",
-										"WARNING", JOptionPane.WARNING_MESSAGE);
-							if (textArea.getText().trim().length() == 0)
-								JOptionPane.showMessageDialog(null, "You need to validate your email first!", "WARNING",
-										JOptionPane.WARNING_MESSAGE);
-
-							// Sending e-mail to Miguel's account -- it will be changed to the
-							// Administrator's email contained in config.xml
-							SendMail sm = new SendMail(EmailField.getText(), password, "mimema9@gmail.com");
-							sm.setSubject(subjectField.getText());
-							sm.setContent(textArea.getText());
-							sm.send();
-
-							// E-mail credentials verification -- Work In Progress
-							//
-							// int port = 587;
-							// String host = "smtp.gmail.com";
-							// Properties props = new Properties();
-							// // required for gmail
-							// props.put("mail.smtp.starttls.enable", "true");
-							// props.put("mail.smtp.auth", "true");
-							// // or use getDefaultInstance instance if desired...
-							// Session session = Session.getInstance(props, null);
-							// try {
-							// Transport transport = session.getTransport("smtp");
-							// transport.connect(host, port, EmailField.getText(),
-							// charArrayToString(password));
-							// transport.close();
-							// System.out.println("success");
-							// } catch (MessagingException e1) {
-							// e1.printStackTrace();
-							// }
-						}
-					});
-
-					infoPanel.add(subjectLabel);
-					infoPanel.add(subjectField);
-					infoPanel.add(sendButton, BorderLayout.EAST);
-
-					frame.add(infoPanel, BorderLayout.NORTH);
-					frame.add(textPane, BorderLayout.CENTER);
-
-					frame.setVisible(true);
-
-				}
+				if(!HELP_WINDOW_ALREADY_ONGOING) throwHelp();
+			}
+		});
+		/* Opens the FAQ */
+		faq.addActionListener(new ActionListener() {
+			@Override
+			public void actionPerformed(ActionEvent arg0) {
+				if(!FAQ_WINDOW_ALREADY_ONGOING) throwFAQ();
 			}
 		});
 	}
@@ -397,7 +360,7 @@ public class GUI {
 		return string;
 	}
 
-	/*
+	/**
 	 * Utility code -- used to trim the password input from the user, to make sure
 	 * it's not fully composed of white spaces.
 	 */
@@ -452,8 +415,16 @@ public class GUI {
 				JComboBox choice = new JComboBox(options);
 				JOptionPane.showMessageDialog(null, choice, "Choose Data Type for this Variable",
 						JOptionPane.QUESTION_MESSAGE);
-				Object[] newRow = { "", choice.getSelectedItem(), "", "", "" };
-				tableModel.addRow(newRow);
+
+				if(choice.getSelectedItem().equals("Binary")) {
+					Object[] newRow = {"", choice.getSelectedItem(), "", 0, 1 };
+					tableModel.addRow(newRow);
+				}
+				else {
+					Object[] newRow = { "", choice.getSelectedItem(), "", "", "" };
+					tableModel.addRow(newRow);
+				}
+
 			}
 		});
 		removeRow.addActionListener(new ActionListener() {
@@ -482,6 +453,16 @@ public class GUI {
 		saveButton.addActionListener(new ActionListener() {
 			@Override
 			public void actionPerformed(ActionEvent arg0) {
+				ArrayList<String> nomes = new ArrayList<>();
+				for (int i = 0; i < configurationTable.getRowCount(); i++) {
+					for(String uniqueName : nomes) {
+						if(uniqueName.equals(configurationTable.getValueAt(i, 0))){
+							JOptionPane.showMessageDialog(null, "REPEATED VARIABLE NAME: "+uniqueName+"\n Please change in order to save the configuration!", "", JOptionPane.WARNING_MESSAGE);
+							return;
+						}
+					}
+					nomes.add((String) configurationTable.getValueAt(i, 0));
+				}
 				if (varsetup.getTitle().equals("New Variable Group Configuration")) {
 					String input = JOptionPane.showInputDialog(
 							"Choose a name for this Group of Variables\nExample: Spam Filter Configuration\nLeaving this field blank cancels the operation.");
@@ -498,53 +479,52 @@ public class GUI {
 					Variable toAdd;
 					if (configurationTable.getValueAt(i, 1).equals("Binary")) {
 						toAdd = new Variable((String) (configurationTable.getValueAt(i, 0)), DataType.BINARY);
-						if (!isValidValue(String.valueOf(configurationTable.getValueAt(i, 2)), DataType.BINARY)) {
-							JOptionPane.showMessageDialog(null, "Invalid Value on the Variable '"
-									+ configurationTable.getValueAt(i, 0) + "', please change to Binary.");
-							return;
-						}
-						toAdd.setValue(String.valueOf(configurationTable.getValueAt(i, 2)));
-						if (isValidValue(String.valueOf(configurationTable.getValueAt(i, 3)), DataType.BINARY)) {
-							toAdd.setLowestLimit(
-									(Integer.valueOf(String.valueOf(configurationTable.getValueAt(i, 3)))));
-						}
-						if (isValidValue(String.valueOf(configurationTable.getValueAt(i, 4)), DataType.BINARY)) {
-							toAdd.setHighestLimit(
-									(Integer.valueOf(String.valueOf(configurationTable.getValueAt(i, 4)))));
+						if(String.valueOf(configurationTable.getValueAt(i, 2)).equals("") || !isValidValue(String.valueOf(configurationTable.getValueAt(i, 2)), DataType.BINARY) ||
+								Integer.valueOf(String.valueOf(configurationTable.getValueAt(i, 2)))<toAdd.getLowestBinaryLimit() ||
+								Integer.valueOf(String.valueOf(configurationTable.getValueAt(i, 2)))>toAdd.getHighestBinaryLimit()){
+							toAdd.setValue(toAdd.getLowestBinaryLimit());
+						}else {
+							toAdd.setValue(Double.valueOf(String.valueOf((configurationTable.getValueAt(i, 2)))));	
 						}
 						variableTable.addVariable(toAdd);
 					}
 					if (configurationTable.getValueAt(i, 1).equals("Integer")) {
 						toAdd = new Variable((String) (configurationTable.getValueAt(i, 0)), DataType.INTEGER);
-						if (!isValidValue(String.valueOf(configurationTable.getValueAt(i, 2)), DataType.INTEGER)) {
-							JOptionPane.showMessageDialog(null, "Invalid Value on the Variable '"
-									+ configurationTable.getValueAt(i, 0) + "', please change to Integer.");
-							return;
-						}
-						toAdd.setValue(Integer.valueOf(String.valueOf((configurationTable.getValueAt(i, 2)))));
 						if (isValidValue(String.valueOf(configurationTable.getValueAt(i, 3)), DataType.INTEGER)) {
 							toAdd.setLowestLimit(Integer.valueOf(String.valueOf(configurationTable.getValueAt(i, 3))));
 						}
 						if (isValidValue(String.valueOf(configurationTable.getValueAt(i, 4)), DataType.INTEGER)) {
 							toAdd.setHighestLimit(Integer.valueOf(String.valueOf(configurationTable.getValueAt(i, 4))));
+							if(toAdd.getHighestLimit()<toAdd.getLowestLimit()) {
+								toAdd.setHighestLimit(toAdd.getLowestLimit()+1);
+							}
+						}
+						if(String.valueOf(configurationTable.getValueAt(i, 2)).equals("") || !isValidValue(String.valueOf(configurationTable.getValueAt(i, 2)), DataType.INTEGER) ||
+								Integer.valueOf(String.valueOf(configurationTable.getValueAt(i, 2)))<toAdd.getLowestLimit() ||
+								Integer.valueOf(String.valueOf(configurationTable.getValueAt(i, 2)))>toAdd.getHighestLimit()){
+							toAdd.setValue(toAdd.getLowestLimit());
+						}else {
+							toAdd.setValue(Double.valueOf(String.valueOf((configurationTable.getValueAt(i, 2)))));	
 						}
 						variableTable.addVariable(toAdd);
 					}
 					if (configurationTable.getValueAt(i, 1).equals("Real")) {
 						toAdd = new Variable((String) (configurationTable.getValueAt(i, 0)), DataType.REAL);
-						if (!isValidValue(String.valueOf(configurationTable.getValueAt(i, 2)), DataType.REAL)) {
-							JOptionPane.showMessageDialog(null, "Invalid Value on the Variable '"
-									+ configurationTable.getValueAt(i, 0) + "', please change to Real.");
-							return;
-						}
-						toAdd.setValue(Double.valueOf(String.valueOf((configurationTable.getValueAt(i, 2)))));
 						if (isValidValue(String.valueOf(configurationTable.getValueAt(i, 3)), DataType.REAL)) {
-							toAdd.setLowestRealLimit(
-									Double.valueOf(String.valueOf(configurationTable.getValueAt(i, 3))));
+							toAdd.setLowestRealLimit(Double.valueOf(String.valueOf(configurationTable.getValueAt(i, 3))));
 						}
 						if (isValidValue(String.valueOf(configurationTable.getValueAt(i, 4)), DataType.REAL)) {
-							toAdd.setHighestRealLimit(
-									Double.valueOf(String.valueOf(configurationTable.getValueAt(i, 4))));
+							toAdd.setHighestRealLimit(Double.valueOf(String.valueOf(configurationTable.getValueAt(i, 4))));
+							if(toAdd.getHighestRealLimit()<toAdd.getLowestRealLimit()) {
+								toAdd.setHighestRealLimit(toAdd.getLowestRealLimit()+1);
+							}
+						}
+						if(String.valueOf(configurationTable.getValueAt(i, 2)).equals("") || !isValidValue(String.valueOf(configurationTable.getValueAt(i, 2)), DataType.REAL) ||
+								Double.valueOf(String.valueOf(configurationTable.getValueAt(i, 2)))<toAdd.getLowestRealLimit() ||
+								Double.valueOf(String.valueOf(configurationTable.getValueAt(i, 2)))>toAdd.getHighestRealLimit()){
+							toAdd.setValue(toAdd.getLowestRealLimit());
+						}else {
+							toAdd.setValue(Double.valueOf(String.valueOf((configurationTable.getValueAt(i, 2)))));	
 						}
 						variableTable.addVariable(toAdd);
 					}
@@ -560,7 +540,7 @@ public class GUI {
 			tableModel.removeRow(0);
 		if (pathToXML == null && !SETUP_IN_MEMORY) {
 			varsetup = new JFrame("New Variable Group Configuration");
-			String[] ColumnIdentifiers = { "Name", "Data Type", "Value", "Lowest Limit", "Highest Limit" };
+			String[] ColumnIdentifiers = { "Name", "Data Type", "Best Solution Value", "Lowest Limit", "Highest Limit" };
 			tableModel.setColumnIdentifiers(ColumnIdentifiers);
 		} else if (pathToXML == null && SETUP_IN_MEMORY) {
 			varsetup = new JFrame(varsetup.getTitle());
@@ -568,8 +548,14 @@ public class GUI {
 				tableModel.addRow(fromVariableTableIntoJTable(variable));
 			}
 		} else {
-			varsetup = new JFrame(varsetup.getTitle());
-			fromXMLIntoJTable(pathToXML);
+			String[] ColumnIdentifiers = { "Name", "Data Type", "Best Solution Value", "Lowest Limit", "Highest Limit" };
+			tableModel.setColumnIdentifiers(ColumnIdentifiers);
+			varsetup = new JFrame(fromXMLIntoJTable(pathToXML));
+			ProblemField.setText(varsetup.getTitle());
+			ValidateProblem.doClick();
+			for (Variable variable : variableTable.getVariables()) {
+				tableModel.addRow(fromVariableTableIntoJTable(variable));
+			}
 
 		}
 		/*
@@ -599,8 +585,138 @@ public class GUI {
 		varsetup.setLocationRelativeTo(frame);
 		varsetup.setLocation(varsetup.getX(), varsetup.getY() + frame.getHeight());
 		varsetup.setVisible(true);
+		CONFIGURATION_WINDOW_ALREADY_ONGOING = true;
+		varsetup.addWindowListener(new java.awt.event.WindowAdapter(){
+			@Override
+			public void windowClosing(java.awt.event.WindowEvent windowEvent) {
+				CONFIGURATION_WINDOW_ALREADY_ONGOING = false;
+			}
+		});
+	}
+	
+	private void throwHelp() {
+		JPanel panel = new JPanel();
+		JLabel label = new JLabel("Enter a password:");
+		JPasswordField pass = new JPasswordField(10);
+		panel.add(label);
+		panel.add(pass);
+		String[] options = new String[] { "OK", "Cancel" };
+		int option = JOptionPane.showOptionDialog(null, panel, "Insert your e-mail account password",
+				JOptionPane.NO_OPTION, JOptionPane.PLAIN_MESSAGE, null, options, options[0]);
+		if (option == 1)
+			return;
+		while (option == 0 && trimCharArray(pass.getPassword()).length == 0) {
+			pass.setText(null);
+			option = JOptionPane.showOptionDialog(null, panel, "Insert your e-mail account password",
+					JOptionPane.NO_OPTION, JOptionPane.PLAIN_MESSAGE, null, options, options[0]);
+		}
+		char[] password = pass.getPassword();
+		if (password.length > 0) {
+			JFrame frame = new JFrame("Help - Send Email to Administrator");
+			frame.setDefaultCloseOperation(WindowConstants.DISPOSE_ON_CLOSE);
+			frame.setSize(new Dimension(450, 400));
+			frame.setLocationRelativeTo(help);
+			frame.setResizable(false);
+			JPanel infoPanel = new JPanel();
+			JTextField subjectField = new JTextField();
+			subjectField.setPreferredSize(new Dimension(250, 25));
+			JTextArea textArea = new JTextArea();
+			JScrollPane textPane = new JScrollPane(textArea);
+			JLabel subjectLabel = new JLabel("Subject :");
+			JButton sendButton = new JButton("Send e-mail");
+			sendButton.setFocusable(false);
+			sendButton.addActionListener(new ActionListener() {
+				@Override
+				public void actionPerformed(ActionEvent e) {
+					if (!isValidEmail(EmailField.getText()))
+						JOptionPane.showMessageDialog(null, "You need to validate your email first!", "WARNING",
+								JOptionPane.WARNING_MESSAGE);
+					if (subjectField.getText().trim().length() == 0)
+						JOptionPane.showMessageDialog(null, "You need to fill in the subject of the e-mail!",
+								"WARNING", JOptionPane.WARNING_MESSAGE);
+					if (textArea.getText().trim().length() == 0)
+						JOptionPane.showMessageDialog(null, "You need to fill in the content of e-mail!", "WARNING",
+								JOptionPane.WARNING_MESSAGE);
+
+					// Sending e-mail to Miguel's account -- it will be changed to the
+					// Administrator's email contained in config.xml
+					SendMail sm = new SendMail(EmailField.getText(), password, "mimema9@gmail.com");
+					sm.setSubject(subjectField.getText());
+					sm.setContent(textArea.getText());
+					sm.send();
+
+					// E-mail credentials verification -- Work In Progress
+					//
+					int port = 587;
+					String host = "smtp.gmail.com";
+					Properties props = new Properties();
+					// required for gmail
+					props.put("mail.smtp.starttls.enable", "true");
+					props.put("mail.smtp.auth", "true");
+					// or use getDefaultInstance instance if desired...
+					Session session = Session.getInstance(props, null);
+					try {
+						Transport transport = session.getTransport("smtp");
+						transport.connect(host, port, EmailField.getText(),
+								charArrayToString(password));
+						transport.close();
+						System.out.println("success");
+						JOptionPane.showMessageDialog(null, "Message Successfully Sent!","", JOptionPane.INFORMATION_MESSAGE);
+					}catch(AuthenticationFailedException afe) {
+						JOptionPane.showMessageDialog(null, "Incorrect Password!","", JOptionPane.ERROR_MESSAGE);
+					}catch(MessagingException me) {
+						me.printStackTrace();
+					}
+				}
+			});
+			infoPanel.add(subjectLabel);
+			infoPanel.add(subjectField);
+			infoPanel.add(sendButton, BorderLayout.EAST);
+			frame.add(infoPanel, BorderLayout.NORTH);
+			frame.add(textPane, BorderLayout.CENTER);
+			frame.setVisible(true);
+			HELP_WINDOW_ALREADY_ONGOING = true;
+			frame.addWindowListener(new java.awt.event.WindowAdapter() {
+			    @Override
+			    public void windowClosing(java.awt.event.WindowEvent windowEvent) {
+			        HELP_WINDOW_ALREADY_ONGOING = false;
+			    }
+			});
+		}
+	}
+	
+	private void throwFAQ() {
+		JFrame frame = new JFrame("F.A.Q.");
+		frame.setSize(new Dimension(800,800));
+		frame.setResizable(false);
+		frame.setLocationRelativeTo(faq);
+		frame.setDefaultCloseOperation(frame.DISPOSE_ON_CLOSE);
+		JPanel panel = new JPanel();
+		JEditorPane faqtext = new JEditorPane("text/html", "BLABLABLABLA"
+				+ ""
+				+ ""
+				+ ""
+				+ ""
+				+ ""
+				+ "This is gonna be long");
+		panel.add(faqtext);
+		frame.add(panel);
+		frame.setVisible(true);
+		FAQ_WINDOW_ALREADY_ONGOING = true;
+		frame.addWindowListener(new java.awt.event.WindowAdapter() {
+		    @Override
+		    public void windowClosing(java.awt.event.WindowEvent windowEvent) {
+		        FAQ_WINDOW_ALREADY_ONGOING = false;
+		    }
+		});
 	}
 
+
+	/**
+	 * Transforms the attributes of a Variable in a Object[] so it can be loaded into the JTable
+	 * @param v
+	 * @return
+	 */
 	private Object[] fromVariableTableIntoJTable(Variable v) {
 		switch (v.getType()) {
 		case REAL:
@@ -612,8 +728,8 @@ public class GUI {
 					v.getHighestLimit() };
 			return newInteger;
 		case BINARY:
-			Object[] newBinary = { v.getVarName(), "Binary", v.getBinaryValue(), v.getLowestLimit(),
-					v.getHighestLimit() };
+			Object[] newBinary = { v.getVarName(), "Binary", v.getBinaryValue(), v.getLowestBinaryLimit(),
+					v.getHighestBinaryLimit() };
 			return newBinary;
 		}
 		return null;
@@ -621,25 +737,11 @@ public class GUI {
 
 	/**
 	 * Create the JTable based on a XML file from the path provided.
-	 * 
-	 * @param pathname
-	 *            - The path that leads to the XML File
+	 * @param pathname - The path that leads to the XML File
 	 */
-	private void fromXMLIntoJTable(String pathname) {
-		validateAllVariables();
-		// Weekend work
-	}
-
-	/**
-	 * Validates every single variable, making sure of 4 conditions: 1 - Name is
-	 * Valid and not repeated. Is according to Java class name convention 2 - Value
-	 * respects the DataType and exists between the Lowest Limit and Highest Limit
-	 * of that Variable 3 - The Lowest Limit respects the DataType and is below the
-	 * Highest Limit 4 - The Highest Limit respects the DataType and is above the
-	 * Highest Limit
-	 */
-	private void validateAllVariables() {
-		// Weekend work
+	private String fromXMLIntoJTable(String pathname) {
+		variableTable = XML.openProblem(pathname);
+		return variableTable.getVariableGroupName();
 	}
 
 	/**
@@ -683,21 +785,6 @@ public class GUI {
 	}
 
 	/**
-	 * @param nameToTest
-	 * @return Tests out if a given variable name is REPEATED or UNIQUE
-	 */
-	private boolean isRepeatedVariableName(String nameToTest) {
-		int count = 0;
-		for (Variable v : variableTable.getVariables()) {
-			if (v.getVarName().equals(nameToTest))
-				count++;
-		}
-		if (count == 0)
-			return false;
-		return true;
-	}
-
-	/**
 	 * @param input
 	 * @return Validates the input of MinimumRange and MaximumRange a
 	 *         Weight(Variable Value) can have (-999 to 999 or -99.9 to 99.9 in case
@@ -707,7 +794,7 @@ public class GUI {
 		String problemRegex = "";
 		switch (datatype) {
 		case BINARY:
-			problemRegex = "^[0-1]+$";
+			problemRegex = "^[0-1]?$";
 			break;
 		case INTEGER:
 			problemRegex = "^-?[0-9]+$";

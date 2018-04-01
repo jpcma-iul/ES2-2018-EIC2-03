@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<XML>
+    
+    <Variables>
+        <Variable DataType="Binary" HigherLimit="1" LowerLimit="0" Name="Ola" Value="0"/>
+        <Variable DataType="Binary" HigherLimit="1" LowerLimit="0" Name="Ola1" Value="0"/>
+        <Variable DataType="Binary" HigherLimit="1" LowerLimit="0" Name="Ola2" Value="0"/>
+        <Variable DataType="Binary" HigherLimit="1" LowerLimit="0" Name="Ola3" Value="0"/>
+        <Variable DataType="Real" HigherLimit="1000000.0" LowerLimit="-1000000.0" Name="" Value="-1000000.0"/>
+    </Variables>
+</XML>

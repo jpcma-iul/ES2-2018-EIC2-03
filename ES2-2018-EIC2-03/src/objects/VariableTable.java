@@ -27,4 +27,8 @@ public class VariableTable {
 		VariableGroupName = variableGroupName;
 	}
 	
+	public String getVariableGroupName() {
+		return VariableGroupName;
+	}
+	
 }

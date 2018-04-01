@@ -65,7 +65,6 @@ public class SendMail {
 			Transport.send(message);
 			System.out.println("E-mail succesfully sent to " + mailTO);
 		} catch (MessagingException e) {
-			throw new RuntimeException(e);
 		}
 	}
 
