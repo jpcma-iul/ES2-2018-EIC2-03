@@ -116,7 +116,7 @@ public class GUI {
 	public void start() {
 		initializeFields();
 		initializeActionListeners();
-		XML.openConfiguration("config.xml");
+		XML.openConfiguration("../config.xml");
 		frame.add(master);
 		frame.setResizable(false);
 		frame.setDefaultCloseOperation(WindowConstants.EXIT_ON_CLOSE);
@@ -971,8 +971,5 @@ public class GUI {
 	public static void main(String[] args) {
 		GUI gui = new GUI();
 		gui.start();
-		gui.getSecurePassword();
-		System.out.println(gui.getSecurePassword());
-		
 	}
 }
