@@ -1,8 +1,0 @@
-<?xml version="1.0" encoding="UTF-8" standalone="no"?>
-<XML>
-    
-    <Variables>
-        <Variable DataType="Binary" HigherLimit="1" LowerLimit="0" Name="" Value="0"/>
-        <Variable DataType="Binary" HigherLimit="1" LowerLimit="0" Name="3DF" Value="0"/>
-    </Variables>
-</XML>
