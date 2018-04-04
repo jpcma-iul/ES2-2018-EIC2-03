@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8" standalone="no"?>
 <XML>
-    
-    <Administrator Name="Joaquim" email="joaquim@iscte-iul.pt"/>
-    <NewData>More new data</NewData>
+    <email-do-administrador>joao1995sempre@hotmail.com</email-do-administrador>
+    <path-to-jmetal>aa/aa/aa</path-to-jmetal>
+    <path-to-jars>aaaa/aa</path-to-jars>
 </XML>

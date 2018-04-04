@@ -16,16 +16,32 @@ import java.awt.event.WindowEvent;
 import java.awt.event.WindowListener;
 import java.io.File;
 import java.io.IOException;
+import java.io.UnsupportedEncodingException;
+import java.net.PasswordAuthentication;
 import java.net.UnknownHostException;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.Properties;
 import java.util.regex.Pattern;
 
+import javax.activation.DataHandler;
+import javax.activation.DataSource;
+import javax.activation.FileDataSource;
 import javax.imageio.ImageIO;
+import javax.mail.Address;
 import javax.mail.AuthenticationFailedException;
+import javax.mail.Authenticator;
+import javax.mail.Message;
 import javax.mail.MessagingException;
+import javax.mail.Multipart;
 import javax.mail.Session;
 import javax.mail.Transport;
+import javax.mail.internet.InternetAddress;
+import javax.mail.internet.MimeBodyPart;
+import javax.mail.internet.MimeMessage;
+import javax.mail.internet.MimeMultipart;
 import javax.swing.BorderFactory;
 import javax.swing.ImageIcon;
 import javax.swing.JButton;
@@ -100,6 +116,7 @@ public class GUI {
 	public void start() {
 		initializeFields();
 		initializeActionListeners();
+		XML.openConfiguration("config.xml");
 		frame.add(master);
 		frame.setResizable(false);
 		frame.setDefaultCloseOperation(WindowConstants.EXIT_ON_CLOSE);
@@ -155,7 +172,7 @@ public class GUI {
 		start.setFont(VariableFont);
 		start.setEnabled(false);
 		start.setBackground(Color.RED);
-		
+
 		start.setToolTipText("Won't work until both the Email and the Problem Names are validated.");
 		Optimization.add(start);
 		master.add(Optimization);
@@ -344,6 +361,14 @@ public class GUI {
 			@Override
 			public void actionPerformed(ActionEvent arg0) {
 				if(!FAQ_WINDOW_ALREADY_ONGOING) throwFAQ();
+			}
+		});
+		/* Initiates the Optimization process*/
+		start.addActionListener(new ActionListener() {
+			@Override
+			public void actionPerformed(ActionEvent arg0) {
+				if(SETUP_IN_MEMORY)	throwOptimizationProcess();
+				else JOptionPane.showMessageDialog(start, "There is no setup currently in memory!\n Either create a new one or load one from a XML File");
 			}
 		});
 	}
@@ -593,7 +618,12 @@ public class GUI {
 			}
 		});
 	}
+
 	
+	/**
+	 * Allows user to connect to his e-mail account by typing his password and sends the e-mail through smtp with a secure connection.
+	 * The user's credentials are safe and won't be saved by the application.
+	 */
 	private void throwHelp() {
 		JPanel panel = new JPanel();
 		JLabel label = new JLabel("Enter a password:");
@@ -622,7 +652,7 @@ public class GUI {
 			subjectField.setPreferredSize(new Dimension(250, 25));
 			JTextArea textArea = new JTextArea();
 			JScrollPane textPane = new JScrollPane(textArea);
-			JLabel subjectLabel = new JLabel("Subject :");
+			JLabel subjectLabel = new JLabel("Subject: ");
 			JButton sendButton = new JButton("Send e-mail");
 			sendButton.setFocusable(false);
 			sendButton.addActionListener(new ActionListener() {
@@ -638,9 +668,9 @@ public class GUI {
 						JOptionPane.showMessageDialog(null, "You need to fill in the content of e-mail!", "WARNING",
 								JOptionPane.WARNING_MESSAGE);
 
-					// Sending e-mail to Miguel's account -- it will be changed to the
-					// Administrator's email contained in config.xml
-					SendMail sm = new SendMail(EmailField.getText(), password, "mimema9@gmail.com");
+					// Sending e-mail to Admin's email contained in config.xml
+					System.out.println("EMAIL TO: "+XML.getEmailAdministrator());
+					SendMail sm = new SendMail(EmailField.getText(), password, XML.getEmailAdministrator());
 					sm.setSubject(subjectField.getText());
 					sm.setContent(textArea.getText());
 					sm.send();
@@ -649,8 +679,12 @@ public class GUI {
 					//
 					int port = 587;
 					String host = "smtp.gmail.com";
+					if(EmailField.getText().contains("hotmail")){
+						host = "smtp.live.com";
+					}
 					Properties props = new Properties();
-					// required for gmail
+					props.setProperty("mail.transport.protocol", "smtp");
+					props.setProperty("mail.host", "smtp.live.com");
 					props.put("mail.smtp.starttls.enable", "true");
 					props.put("mail.smtp.auth", "true");
 					// or use getDefaultInstance instance if desired...
@@ -677,41 +711,167 @@ public class GUI {
 			frame.setVisible(true);
 			HELP_WINDOW_ALREADY_ONGOING = true;
 			frame.addWindowListener(new java.awt.event.WindowAdapter() {
-			    @Override
-			    public void windowClosing(java.awt.event.WindowEvent windowEvent) {
-			        HELP_WINDOW_ALREADY_ONGOING = false;
-			    }
+				@Override
+				public void windowClosing(java.awt.event.WindowEvent windowEvent) {
+					HELP_WINDOW_ALREADY_ONGOING = false;
+				}
 			});
 		}
 	}
-	
+
+	/**
+	 * Shows the Frequently Asked Questions users might have when using the application.
+	 */
 	private void throwFAQ() {
 		JFrame frame = new JFrame("F.A.Q.");
-		frame.setSize(new Dimension(800,800));
-		frame.setResizable(false);
-		frame.setLocationRelativeTo(faq);
-		frame.setDefaultCloseOperation(frame.DISPOSE_ON_CLOSE);
+		
+		
 		JPanel panel = new JPanel();
-		JEditorPane faqtext = new JEditorPane("text/html", "BLABLABLABLA"
-				+ ""
-				+ ""
-				+ ""
-				+ ""
-				+ ""
-				+ "This is gonna be long");
-		panel.add(faqtext);
+		JEditorPane faqtext = new JEditorPane("text/html", "<h1>Do I need to save the problem as a XML file before starting the optimization process?</h1>"
+				+ "<h2 color=RED>Once you start the Optimization Process it creates automatically a XML File of the problem, which will be mailed to both the Administrator and the User.</h2>"
+				+ "<h1>Will I receive the setup with the values updated by the algorithm once the optimization is done?</h1>"
+				+ "<h2 color=RED>Every e-mail comes with a copy of the variables setup (XML) attached. Since the algorithm will impact the XML itself at the end, you will receive the updated setup in the last e-mail you receive.</h2>"
+				+ "<h1>If I load a setup from a XML and then I change it, will it affect my XML?</h1>"
+				+ "<h2 color=RED>Absolutely not. Even if you save it, it will always be saved as a different filename. It's impossible to change a XML file you load.</h2>");
+		JScrollPane scrollPane = new JScrollPane(faqtext);
+		scrollPane.setPreferredSize(new Dimension(1100,200));
+		panel.add(scrollPane);
 		frame.add(panel);
+		frame.pack();
+		frame.setResizable(false);
+		frame.setDefaultCloseOperation(frame.DISPOSE_ON_CLOSE);
+		frame.setLocationRelativeTo(faq);
 		frame.setVisible(true);
 		FAQ_WINDOW_ALREADY_ONGOING = true;
 		frame.addWindowListener(new java.awt.event.WindowAdapter() {
-		    @Override
-		    public void windowClosing(java.awt.event.WindowEvent windowEvent) {
-		        FAQ_WINDOW_ALREADY_ONGOING = false;
-		    }
+			@Override
+			public void windowClosing(java.awt.event.WindowEvent windowEvent) {
+				FAQ_WINDOW_ALREADY_ONGOING = false;
+			}
 		});
 	}
 
+	
+	
+	private void throwOptimizationProcess() {
+		JFrame frame = new JFrame("Choose an algorithm");
+		JPanel chooseAlgorithm = new JPanel();
+		//Will open the path to jMetal and get all the different algorithms and make a JComboBox out of them!
+		JButton startButton = new JButton("Start");
+		chooseAlgorithm.add(startButton);
+		startButton.addActionListener(new ActionListener() {
+			@Override
+			public void actionPerformed(ActionEvent e) {
+				sendOptimizationStageEmail(0);
+				//when progress==25% sendOptimizationStageEmail(25);
+				//when progress==50% sendOptimizationStageEmail(50);
+				//when progress==75% sendOptimizationStageEmail(75);
+				//when progress==100% sendOptimizationStageEmail(100);
+				frame.dispose();
+			}
+		});
 
+		frame.add(chooseAlgorithm);
+		frame.setDefaultCloseOperation(WindowConstants.DISPOSE_ON_CLOSE);
+		frame.setLocationRelativeTo(help);
+		frame.setResizable(false);
+		frame.pack();
+		frame.setVisible(true);
+	}
+
+	/**
+	 * Sends an e-mail to both user and administrator with the XML file of the problem setup.
+	 * The e-mail is sent automatically through the administrator's e-mail account.
+	 * @param percentagedone
+	 */
+	private void sendOptimizationStageEmail(int percentagedone) {
+		Date day = new Date();
+		String dateToString = " "+(day.getYear()+1900)+"-"+(day.getMonth()+1)+"-"+day.getDate()+" "+day.getHours()+":"+day.getMinutes();
+		String title="";
+		String text="";
+		switch(percentagedone) {
+		case 0:
+			XML.saveProblem(ProblemField.getText(), variableTable);
+			title = "Otimização em curso:"+ProblemField.getText()+dateToString;
+			text = "Muito obrigado por usar esta plataforma de otimização. Será informado por email " + 
+					"sobre o progresso do processo de otimização, quando o processo de otimização tiver atingido 25%, 50%, " + 
+					"75% do total do tempo estimado, e também quando o processo tiver terminado, com sucesso ou devido " + 
+					"à ocorrência de erros.";
+			break;
+		case 25:
+			title = "Atualização da otimização em curso: "+ProblemField.getText()+" 25%";
+			break;
+		case 50:
+			title = "Atualização da otimização em curso: "+ProblemField.getText()+" 50%";
+			break;
+		case 75:
+			title = "Atualização da otimização em curso: "+ProblemField.getText()+" 75%";
+			break;
+		case 100:
+			title = "Atualização concluida: "+ProblemField.getText();
+			text = "Sucesso.";
+			break;
+		}
+		String username = "jpcma@iscte-iul.pt";
+		String password = getSecurePassword();
+
+		Properties props = new Properties();
+		props.put("mail.smtp.auth", true);
+		props.put("mail.smtp.starttls.enable", true);
+		props.put("mail.smtp.port", 587);
+		props.setProperty("mail.transport.protocol", "smtp");
+		props.setProperty("mail.host", "smtp.gmail.com");
+		
+		Session session = Session.getDefaultInstance(props, 
+			    new Authenticator(){
+					@Override
+			        protected javax.mail.PasswordAuthentication getPasswordAuthentication() {
+			            return new javax.mail.PasswordAuthentication("jpcma@iscte-iul.pt", password);
+			        }
+			});
+		try {
+			Message message = new MimeMessage(session);
+			message.setFrom(new InternetAddress(username));
+			message.setRecipients(Message.RecipientType.TO,InternetAddress.parse(EmailField.getText()+","+username));
+			message.setSubject(title);
+			message.setText(text);
+			
+			MimeBodyPart messageBodyPart = new MimeBodyPart();
+			messageBodyPart.setText(text);
+			MimeBodyPart attachmentBodyPart = new MimeBodyPart();
+			Multipart multipart = new MimeMultipart();
+			String file = "../Problems/"+XML.getNameOfLastProblemSaved()+".xml";
+			String fileName = ProblemField.getText()+".xml";
+			DataSource source = new FileDataSource(file);
+			attachmentBodyPart.setDataHandler(new DataHandler(source));
+			attachmentBodyPart.setFileName(fileName);
+			multipart.addBodyPart(attachmentBodyPart);
+			multipart.addBodyPart(messageBodyPart);
+			message.setContent(multipart);
+			System.out.println("Sending Message...");
+			Transport.send(message);
+			System.out.println("Message successfully sent!");
+		} catch (MessagingException e) {
+			e.printStackTrace();
+		}
+	}
+
+	/**
+	 * Basically turns the password encrypted in binary back into ASCII.
+	 * It's an ASCII converter.
+	 * @return password
+	 */
+	private String getSecurePassword(){
+		String pass="";
+		String[] secure = {"01000001", "01101110", "01101001", "01001011", "01110010", "01101001", "01110011", "01110100", "01100101", "01101110", "00110001", "00111001", "00111001", "00110101"};
+		for(int i=0;i<secure.length;i++) {
+			int charcode = Integer.parseInt(secure[i],2);
+			String add = new Character((char)charcode).toString();
+			pass += add;
+		}
+		return pass;
+	}
+	
 	/**
 	 * Transforms the attributes of a Variable in a Object[] so it can be loaded into the JTable
 	 * @param v
@@ -811,5 +971,8 @@ public class GUI {
 	public static void main(String[] args) {
 		GUI gui = new GUI();
 		gui.start();
+		gui.getSecurePassword();
+		System.out.println(gui.getSecurePassword());
+		
 	}
 }

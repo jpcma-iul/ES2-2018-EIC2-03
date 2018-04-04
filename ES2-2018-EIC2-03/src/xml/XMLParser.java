@@ -39,6 +39,10 @@ import org.w3c.dom.NamedNodeMap;
 public class XMLParser {
 	private String pathToJMetal;
 	private String pathToJars;
+	private String emailAdministrator;
+	private String passwordAdministrator;
+	private String nameOfLastProblemSaved;
+	
 
 	VariableTable currentXML;
 	public VariableTable openConfiguration(String pathToConfiguration){
@@ -52,14 +56,9 @@ public class XMLParser {
 			doc.getDocumentElement().normalize();   
 			XPathFactory xpathFactory = XPathFactory.newInstance();
 			XPath xpath = xpathFactory.newXPath();
-			/*Example of getting the info from the Administrador (so you can send him an e-mail)*/
-			XPathExpression expr = xpath.compile("/XML/Administrator/@*");
-			NodeList nl = (NodeList) expr.evaluate(doc, XPathConstants.NODESET);
-			for (int i = 0; i < nl.getLength(); i++) {
-				System.out.print(nl.item(i).getNodeName()  + ":");	
-				System.out.println(nl.item(i).getFirstChild().getNodeValue()  + " ");
-			}
-
+			/* Get administrator e-mail */
+			XPathExpression expr = xpath.compile("/XML/email-do-administrador");
+			emailAdministrator = (String) expr.evaluate(doc, XPathConstants.STRING);
 			/*Getting the jMetal path*/
 			expr = xpath.compile("/XML/Paths/jMetalPath");
 			pathToJMetal = (String) expr.evaluate(doc, XPathConstants.STRING);
@@ -120,7 +119,7 @@ public class XMLParser {
 	public void saveProblem(String problemName, VariableTable vt) {
 		currentXML = vt;
 		Date day = new Date();
-		String dateToString = ""+(day.getYear()+1900)+"-"+day.getMonth()+1+"-"+day.getDate()+" "+day.getHours()+"-"+day.getMinutes()+"-"+day.getSeconds();
+		String dateToString = ""+(day.getYear()+1900)+"-"+(day.getMonth()+1)+"-"+day.getDate()+" "+day.getHours()+"-"+day.getMinutes()+"-"+day.getSeconds();
 		try {
 			/*Create new File with desired name and fill it with <XML> tags*/
 			File inputFile = new File("../Problems/"+problemName+" "+dateToString+".xml");
@@ -173,47 +172,28 @@ public class XMLParser {
 			DOMSource source = new DOMSource(doc);
 			transformer.transform(source, result);
 			System.out.println("Name of Saved File: "+problemName+" "+dateToString);
+			nameOfLastProblemSaved = problemName+" "+dateToString;
 		}catch(Exception e) {e.printStackTrace();}
 	}
 
-	public void saveConfiguration() {
-		try {
-			currentXML = new VariableTable("New Variable Group Configuration");
-			File inputFile = new File("config.xml");
-			DocumentBuilderFactory dbFactory = DocumentBuilderFactory.newInstance();
-			DocumentBuilder dBuilder = dbFactory.newDocumentBuilder();
-			Document doc = dBuilder.parse(inputFile);
-			doc.getDocumentElement().normalize();   
-			XPathFactory xpathFactory = XPathFactory.newInstance();
-			XPath xpath = xpathFactory.newXPath();
-
-			/*Inserting new Elements*/
-			Element newElement1 = doc.createElement("Administrator");
-			newElement1.setAttribute("Name", "Joaquim");
-			newElement1.setAttribute("email", "joaquim@iscte-iul.pt"); 
-			// Adding new element NewData to the XML document (root node)
-			System.out.println("----- Adding new element <NewData> to the XML document -----");
-			Element newElement2 = doc.createElement("NewData");
-			newElement2.setTextContent("More new data"); 
-
-			// Add new nodes to XML document (root element)
-			System.out.println("Root element :" + doc.getDocumentElement().getNodeName());         
-			Node n = doc.getDocumentElement();
-			n.appendChild(newElement1);
-			n.appendChild(newElement2);    
-
-			// Save XML document
-			System.out.println("\nSave XML document.");
-			Transformer transformer = TransformerFactory.newInstance().newTransformer();
-			transformer.setOutputProperty(OutputKeys.INDENT, "yes");
-			StreamResult result = new StreamResult(new FileOutputStream("config.xml"));
-			DOMSource source = new DOMSource(doc);
-			transformer.transform(source, result);
-		}catch(Exception e) {}
+	public String getEmailAdministrator() {
+		return emailAdministrator;
 	}
-
+	
+	public String getPathToJars() {
+		return pathToJars;
+	}
+	
+	public String getPathToJMetal() {
+		return pathToJMetal;
+	}
+	
 	public VariableTable getCurrentXML() {
 		return currentXML;
+	}
+	
+	public String getNameOfLastProblemSaved() {
+		return nameOfLastProblemSaved;
 	}
 
 }
